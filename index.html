@@ -76,10 +76,11 @@
         <select id="menu-select" onchange="switchFields()">
             <option value="ジョグ">ジョグ</option>
             <option value="インターバル">インターバル</option>
+            <option value="レストトレーニング">レストトレーニング</option>
             <option value="タイムトライアル">タイムトライアル</option>
             <option value="ペース走">ペース走</option>
             <option value="ビルドアップ">ビルドアップ</option>
-            <option value="レスト">レスト</option>
+            <option value="レスト">レスト(完全休養)</option>
         </select>
 
         <div id="sect-jog" class="menu-sect dynamic-section">
@@ -89,10 +90,16 @@
         </div>
 
         <div id="sect-int" class="menu-sect dynamic-section" style="display:none;">
-            <input type="number" id="int-dist" placeholder="距離 (m) 例: 1000">
-            <input type="number" id="int-count" placeholder="本数">
-            <input type="number" id="int-time" placeholder="タイム (秒)">
-            <input type="number" id="int-rest-sec" placeholder="休憩 (秒)">
+            <input type="text" id="int-dist-v2" placeholder="距離 (例: 400m)">
+            <input type="text" id="int-time-v2" placeholder="タイム (例: 72秒)">
+            <input type="text" id="int-connect-v2" placeholder="つなぎ (例: 200m または 60秒)">
+        </div>
+
+        <div id="sect-rest-tr" class="menu-sect dynamic-section" style="display:none;">
+            <input type="number" id="rt-dist" placeholder="何m">
+            <input type="number" id="rt-count" placeholder="何本">
+            <input type="number" id="rt-rest" placeholder="休憩何秒">
+            <input type="number" id="rt-time" placeholder="タイム何秒">
         </div>
 
         <div id="sect-tt" class="menu-sect dynamic-section" style="display:none;">
@@ -117,7 +124,7 @@
         </div>
 
         <div id="sect-rest" class="menu-sect dynamic-section" style="display:none;">
-            <p style="font-size:0.8rem; color:#666;">※休養日のメモを下に記入してください</p>
+            <p style="font-size:0.8rem; color:#666;">※完全休養のメモを下に記入してください</p>
         </div>
 
         <textarea id="common-memo" placeholder="メモ・感想（全メニュー共通）" rows="3"></textarea>
@@ -188,7 +195,7 @@
     function switchFields() {
         const v = document.getElementById('menu-select').value;
         document.querySelectorAll('.menu-sect').forEach(s => s.style.display = 'none');
-        const id = {'ジョグ':'sect-jog','インターバル':'sect-int','タイムトライアル':'sect-tt','ペース走':'sect-pace','ビルドアップ':'sect-bu','レスト':'sect-rest'}[v];
+        const id = {'ジョグ':'sect-jog','インターバル':'sect-int','レストトレーニング':'sect-rest-tr','タイムトライアル':'sect-tt','ペース走':'sect-pace','ビルドアップ':'sect-bu','レスト':'sect-rest'}[v];
         if(id) document.getElementById(id).style.display = 'block';
     }
 
@@ -211,6 +218,7 @@
         document.getElementById('delete-btn').classList.toggle('hidden', !rec);
         document.getElementById('common-memo').value = rec ? (rec.memo || "") : "";
         document.getElementById('entry-modal').style.display = 'block';
+        if(rec) document.getElementById('menu-select').value = rec.type;
         switchFields();
     }
     function closeModal() { document.getElementById('entry-modal').style.display = 'none'; }
@@ -238,8 +246,9 @@
             dist = parseFloat(document.getElementById('tt-dist').value)||0;
             detail = `${document.getElementById('tt-min').value}:${document.getElementById('tt-sec').value.padStart(2,'0')}.${document.getElementById('tt-msec').value}`;
         } else if(menu==='インターバル') {
-            dist = ((parseFloat(document.getElementById('int-dist').value)||0) * (parseInt(document.getElementById('int-count').value)||0)) / 1000;
-            detail = `${document.getElementById('int-dist').value}m×${document.getElementById('int-count').value} (T:${document.getElementById('int-time').value}s / R:${document.getElementById('int-rest-sec').value}s)`;
+            detail = `距離:${document.getElementById('int-dist-v2').value} / タイム:${document.getElementById('int-time-v2').value} / つなぎ:${document.getElementById('int-connect-v2').value}`;
+        } else if(menu==='レストトレーニング') {
+            detail = `${document.getElementById('rt-dist').value}m×${document.getElementById('rt-count').value} (T:${document.getElementById('rt-time').value}s / R:${document.getElementById('rt-rest').value}s)`;
         } else if(menu==='ペース走') dist = parseFloat(document.getElementById('pace-dist').value)||0;
         else if(menu==='ビルドアップ') dist = parseFloat(document.getElementById('bu-dist').value)||0;
 
