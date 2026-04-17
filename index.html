@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUN LOG - Final Fix</title>
+    <title>RUN LOG - Custom Shoe Edition</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
@@ -31,7 +31,7 @@
 
         .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; }
         .timer-display { font-size: 3.5rem; text-align: center; font-weight: bold; font-family: monospace; }
-        .btn-action { width: 100%; padding: 16px; border-radius: 30px; border: none; color: white; font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; }
+        .btn-action { width: 100%; padding: 16px; border-radius: 30px; border: none; color: white; font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
         
         .timer-setup { display: flex; gap: 10px; justify-content: center; margin-bottom: 15px; align-items: center; }
         .timer-setup input { width: 70px !important; text-align: center; margin: 0; }
@@ -39,7 +39,13 @@
         .q-btn { background: #eee; border: none; padding: 8px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
 
         input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
-        .history-item { background: white; padding: 12px; border-radius: 10px; margin-bottom: 8px; border-left: 5px solid var(--primary); }
+        
+        /* 靴セクションのスタイル */
+        .shoe-upload-area { margin-top: 10px; text-align: center; }
+        #shoe-preview { max-width: 100%; height: 120px; object-fit: cover; border-radius: 10px; display: none; margin: 10px auto; border: 1px solid #eee; }
+        .history-shoe-img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin-top: 5px; display: block; }
+
+        .history-item { background: white; padding: 12px; border-radius: 10px; margin-bottom: 8px; border-left: 5px solid var(--primary); display: flex; justify-content: space-between; align-items: flex-start; }
     </style>
 </head>
 <body>
@@ -89,33 +95,37 @@
     </div>
 
     <div class="card">
-        <input type="number" id="dist-input" step="0.01" placeholder="距離(km)">
-        <input type="text" id="menu-input" placeholder="メニュー名">
-        <select id="shoe-input">
-            <option>練習用シューズ</option>
-            <option>厚底レーシング</option>
-            <option>スパイク</option>
-        </select>
-        <button class="btn-action" style="background: var(--primary);" onclick="saveLog()">記録を保存</button>
+        <label style="font-size: 0.8rem; color: #666;">走行距離 (km)</label>
+        <input type="number" id="dist-input" step="0.01" placeholder="0.00">
+        <input type="text" id="menu-input" placeholder="メニュー名（例：1000m×5）">
+        
+        <div style="border-top: 1px solid #eee; margin-top: 10px; padding-top: 10px;">
+            <label style="font-size: 0.8rem; color: #666;">使用シューズ</label>
+            <input type="text" id="shoe-name-input" placeholder="シューズの名前を入力">
+            <div class="shoe-upload-area">
+                <input type="file" id="shoe-photo-input" accept="image/*" style="display: none;" onchange="previewShoe(this)">
+                <button type="button" onclick="document.getElementById('shoe-photo-input').click()" style="background: #eee; border: 1px solid #ddd; padding: 8px 15px; border-radius: 8px; font-size: 0.8rem; width: 100%;">📸 シューズの写真を撮る/選ぶ</button>
+                <img id="shoe-preview">
+            </div>
+        </div>
+
+        <button class="btn-action" style="background: var(--primary); margin-top: 15px;" onclick="saveLog()">練習を保存</button>
     </div>
     <div id="history"></div>
 </div>
 
 <script>
-    let map, pathLine, userMarker, watchId = null, totalDist = 0;
+    let map, pathLine, userMarker, watchId = null, totalDist = 0, currentShoeBase64 = "";
 
     function initMap() {
         if (map) return;
         map = L.map('map').setView([35.681, 139.767], 15);
-        // 地図タイルを最も安定している OpenStreetMap に変更しました
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
-        
         pathLine = L.polyline([], {color: '#4285F4', weight: 6}).addTo(map);
         const curIcon = L.divIcon({className: 'current-location-icon', iconSize: [12, 12]});
         userMarker = L.marker([35.681, 139.767], {icon: curIcon}).addTo(map);
-
         navigator.geolocation.getCurrentPosition(pos => {
             const p = [pos.coords.latitude, pos.coords.longitude];
             map.setView(p, 16); userMarker.setLatLng(p);
@@ -151,6 +161,7 @@
         }
     }
 
+    // ストップウォッチ
     let swTime=0, swInt=null;
     function toggleStopwatch(){
         const b = document.getElementById('sw-btn');
@@ -166,6 +177,7 @@
     }
     function resetStopwatch(){ swTime=0; document.getElementById('sw-display').innerText="00:00.00"; }
 
+    // タイマー
     let tmTime=90, tmInt=null;
     function setTimer(sec) {
         tmTime = sec;
@@ -192,14 +204,29 @@
     }
     function resetTimer() { clearInterval(tmInt); tmInt=null; setTimer(90); document.getElementById('tm-start-btn').innerText="開始"; }
 
+    // 靴の写真プレビューとデータ変換
+    function previewShoe(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById('shoe-preview');
+                preview.src = e.target.result;
+                preview.style.display = "block";
+                currentShoeBase64 = e.target.result;
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
     function saveLog() {
         const log = {
             date: new Date().toLocaleDateString('ja-JP'),
             dist: parseFloat(document.getElementById('dist-input').value) || 0,
             menu: document.getElementById('menu-input').value,
-            shoe: document.getElementById('shoe-input').value
+            shoeName: document.getElementById('shoe-name-input').value || "未設定",
+            shoeImg: currentShoeBase64
         };
-        if(!log.menu) return alert("メニューを入れてね");
+        if(!log.menu) return alert("メニュー名を入力してください");
         let logs = JSON.parse(localStorage.getItem('runLogs')) || [];
         logs.unshift(log);
         localStorage.setItem('runLogs', JSON.stringify(logs));
@@ -214,7 +241,17 @@
             t += l.dist;
             const item = document.createElement('div');
             item.className = 'history-item';
-            item.innerHTML = `<b>${l.date}</b> | ${l.dist.toFixed(2)}km<br>${l.menu}`;
+            
+            let shoeHtml = l.shoeImg ? `<img src="${l.shoeImg}" class="history-shoe-img">` : '';
+            
+            item.innerHTML = `
+                <div>
+                    <b>${l.date}</b> | ${l.dist.toFixed(2)}km<br>
+                    <span>${l.menu}</span><br>
+                    <small style="color:#666;">👟 ${l.shoeName}</small>
+                </div>
+                ${shoeHtml}
+            `;
             document.getElementById('history').appendChild(item);
         });
         document.getElementById('stat-total').innerText = t.toFixed(1);
