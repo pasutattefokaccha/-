@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUN LOG - GPS & Timer Fix</title>
+    <title>RUN LOG - Final Fix</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
@@ -33,7 +33,6 @@
         .timer-display { font-size: 3.5rem; text-align: center; font-weight: bold; font-family: monospace; }
         .btn-action { width: 100%; padding: 16px; border-radius: 30px; border: none; color: white; font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; }
         
-        /* タイマー設定用スタイル復活 */
         .timer-setup { display: flex; gap: 10px; justify-content: center; margin-bottom: 15px; align-items: center; }
         .timer-setup input { width: 70px !important; text-align: center; margin: 0; }
         .quick-set { display: flex; gap: 5px; margin-bottom: 15px; justify-content: center; flex-wrap: wrap; }
@@ -74,19 +73,16 @@
     <div id="mode-rest" class="mode-tab" style="display: none;">
         <div class="card">
             <div class="timer-display" id="tm-display">01:30</div>
-            
             <div class="quick-set">
                 <button class="q-btn" onclick="setTimer(30)">30s</button>
                 <button class="q-btn" onclick="setTimer(60)">60s</button>
                 <button class="q-btn" onclick="setTimer(90)">90s</button>
                 <button class="q-btn" onclick="setTimer(120)">120s</button>
             </div>
-
             <div class="timer-setup">
                 <input type="number" id="tm-min" value="1" min="0"> 分
                 <input type="number" id="tm-sec" value="30" min="0" max="59"> 秒
             </div>
-
             <button id="tm-start-btn" class="btn-action" style="background: var(--rest);" onclick="toggleTimer()">開始</button>
             <button class="btn-action" style="background: #888;" onclick="resetTimer()">リセット</button>
         </div>
@@ -111,14 +107,19 @@
     function initMap() {
         if (map) return;
         map = L.map('map').setView([35.681, 139.767], 15);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/voyager_all/{z}/{x}/{y}{r}.png').addTo(map);
+        // 地図タイルを最も安定している OpenStreetMap に変更しました
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
         pathLine = L.polyline([], {color: '#4285F4', weight: 6}).addTo(map);
         const curIcon = L.divIcon({className: 'current-location-icon', iconSize: [12, 12]});
         userMarker = L.marker([35.681, 139.767], {icon: curIcon}).addTo(map);
+
         navigator.geolocation.getCurrentPosition(pos => {
             const p = [pos.coords.latitude, pos.coords.longitude];
             map.setView(p, 16); userMarker.setLatLng(p);
-        });
+        }, () => {}, {enableHighAccuracy: true});
     }
 
     function switchMode(mode) {
@@ -165,7 +166,6 @@
     }
     function resetStopwatch(){ swTime=0; document.getElementById('sw-display').innerText="00:00.00"; }
 
-    // タイマー機能復活
     let tmTime=90, tmInt=null;
     function setTimer(sec) {
         tmTime = sec;
