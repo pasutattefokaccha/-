@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUN DIARY - Monthly Total</title>
+    <title>RUN DIARY - Custom Menu</title>
     <style>
         :root { --primary: #007AFF; --bg: #f2f2f7; --card: #ffffff; --today: #fff9c4; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; }
         .container { max-width: 600px; margin: 0 auto; }
         
-        /* 月間走行距離の表示エリア */
         .monthly-stats { background: var(--primary); color: white; padding: 15px; border-radius: 15px; margin-bottom: 10px; text-align: center; box-shadow: 0 4px 10px rgba(0,122,255,0.2); }
         .monthly-stats-label { font-size: 0.8rem; opacity: 0.9; }
         .monthly-stats-value { font-size: 1.8rem; font-weight: bold; margin-top: 2px; }
@@ -109,6 +108,12 @@
             </div>
         </div>
 
+        <div id="fields-other" class="dynamic-section" style="display:none;">
+            <label>走行距離(km)</label><input type="number" id="other-dist" step="0.01">
+            <label>メニュー名</label><input type="text" id="other-menu-name" placeholder="例：峠走、ウォーキング">
+            <label>メニューの内容</label><textarea id="other-content" placeholder="練習の詳細はここに" style="height:80px;"></textarea>
+        </div>
+
         <button class="btn btn-save" id="save-btn" onclick="saveDiary()">日誌を保存（天気取得）</button>
         <button class="btn btn-cancel" onclick="closeModal()">キャンセル</button>
     </div>
@@ -120,12 +125,13 @@
 
     function toggleMenuFields() {
         const menu = document.getElementById('menu-select').value;
-        const ids = ['fields-jog', 'fields-int', 'fields-pace', 'fields-bu'];
+        const ids = ['fields-jog', 'fields-int', 'fields-pace', 'fields-bu', 'fields-other'];
         ids.forEach(id => document.getElementById(id).style.display = 'none');
         if(menu === 'ジョグ') document.getElementById('fields-jog').style.display = 'block';
         if(menu === 'インターバル' || menu === 'レスト') document.getElementById('fields-int').style.display = 'block';
         if(menu === 'ペース走') document.getElementById('fields-pace').style.display = 'block';
         if(menu === 'ビルドアップ') document.getElementById('fields-bu').style.display = 'block';
+        if(menu === 'その他') document.getElementById('fields-other').style.display = 'block';
     }
 
     function calcJog() {
@@ -177,13 +183,11 @@
                     <span class="cal-dist">${record.dist}k</span>
                     <span style="font-size:0.55rem">${record.weather} ${record.temp}</span>
                 </div>`;
-                // 表示中の月の分だけ距離を合算
                 monthlyTotal += parseFloat(record.dist);
             }
             dayEl.onclick = () => openModal(dateStr);
             grid.appendChild(dayEl);
         }
-        // 合計距離を更新
         document.getElementById('month-total-val').innerText = monthlyTotal.toFixed(2);
     }
 
@@ -202,28 +206,32 @@
     function changeMonth(diff) { currentViewDate.setMonth(currentViewDate.getMonth() + diff); renderCalendar(); }
 
     async function saveDiary() {
-        const menu = document.getElementById('menu-select').value;
+        const menuType = document.getElementById('menu-select').value;
         const startTime = document.getElementById('start-time').value;
         const endTime = document.getElementById('end-time').value;
-        let dist = 0, detail = "";
+        let dist = 0, detail = "", finalMenuName = menuType;
 
-        if (menu === 'ジョグ') {
+        if (menuType === 'ジョグ') {
             dist = parseFloat(document.getElementById('jog-dist').value);
             detail = document.getElementById('jog-res').innerText;
-        } else if (menu === 'インターバル' || menu === 'レスト') {
+        } else if (menuType === 'インターバル' || menuType === 'レスト') {
             const d = parseFloat(document.getElementById('int-dist').value) || 0;
             const c = parseFloat(document.getElementById('int-count').value) || 0;
             dist = (d * c) / 1000;
             detail = `${d}m×${c} (${document.getElementById('int-rest').value})`;
-        } else if (menu === 'ペース走') {
+        } else if (menuType === 'ペース走') {
             dist = parseFloat(document.getElementById('pace-dist').value);
             detail = `設定:${document.getElementById('pace-val').value}`;
-        } else if (menu === 'ビルドアップ') {
+        } else if (menuType === 'ビルドアップ') {
             dist = parseFloat(document.getElementById('bu-dist').value);
             detail = `${document.getElementById('bu-start').value}→${document.getElementById('bu-end').value}`;
+        } else if (menuType === 'その他') {
+            dist = parseFloat(document.getElementById('other-dist').value) || 0;
+            finalMenuName = document.getElementById('other-menu-name').value || "その他";
+            detail = document.getElementById('other-content').value;
         }
 
-        if (isNaN(dist) && menu !== 'その他' && menu !== 'レスト') return alert("走行データを入力してください");
+        if (isNaN(dist) && menuType !== 'レスト') return alert("走行データを入力してください");
 
         const btn = document.getElementById('save-btn');
         btn.innerText = "データ取得中..."; btn.disabled = true;
@@ -238,7 +246,7 @@
             t = Math.round(data.hourly.temperature_2m[targetHour] || data.current_weather.temperature) + "°C";
         } catch(e) {}
 
-        const diary = { date: selectedDateStr, startTime: startTime, endTime: endTime, menu: menu, dist: dist.toFixed(2), detail: detail, weather: w, temp: t };
+        const diary = { date: selectedDateStr, startTime: startTime, endTime: endTime, menu: finalMenuName, dist: dist.toFixed(2), detail: detail, weather: w, temp: t };
         let diaries = JSON.parse(localStorage.getItem('runDiaries')) || [];
         const idx = diaries.findIndex(d => d.date === selectedDateStr);
         if (idx > -1) diaries[idx] = diary; else diaries.unshift(diary);
