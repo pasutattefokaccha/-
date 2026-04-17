@@ -3,160 +3,189 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUN LOG - GPS Auto Save</title>
+    <title>RUN LOG - Pro</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        :root { --primary-color: #007AFF; --bg-color: #f4f7f9; --card-bg: #ffffff; }
-        body { font-family: sans-serif; background: var(--bg-color); margin: 0; padding: 20px; }
-        .container { max-width: 500px; margin: 0 auto; }
+        :root { --primary: #007AFF; --jog: #28a745; --int: #ff9500; --rest: #5856d6; --bg: #f2f2f7; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 50px; }
+        .container { max-width: 500px; margin: 0 auto; padding: 15px; }
         
-        /* 集計表示 */
-        .stats-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
-        .stat-card { background: var(--primary-color); color: white; padding: 10px; border-radius: 12px; text-align: center; }
-        .stat-value { font-size: 1.1em; font-weight: bold; }
-        .stat-label { font-size: 0.7em; }
+        /* モード切替タブ */
+        .mode-selector { display: flex; background: #ddd; border-radius: 10px; padding: 3px; margin-bottom: 15px; }
+        .mode-btn { flex: 1; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; background: transparent; transition: 0.3s; }
+        .mode-btn.active { background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
-        #map { height: 250px; width: 100%; border-radius: 15px; margin-bottom: 20px; border: 2px solid #fff; }
+        .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .mode-content { display: none; }
+        .mode-content.active { display: block; }
+
+        /* デザイン要素 */
+        #map { height: 250px; width: 100%; border-radius: 12px; margin-bottom: 10px; }
+        .timer-display { font-size: 3rem; text-align: center; font-weight: bold; font-family: monospace; margin: 10px 0; }
+        .btn-action { width: 100%; padding: 15px; border-radius: 30px; border: none; color: white; font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; }
         
-        .form-group { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .btn-gps { width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 30px; border: none; font-weight: bold; font-size: 16px; }
-        .start { background: #28a745; color: white; }
-        .stop { background: #dc3545; color: white; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+        .stat-box { background: var(--primary); color: white; padding: 8px; border-radius: 10px; text-align: center; font-size: 0.8rem; }
         
-        label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.9em; }
-        input, select { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        
-        .btn-save { width: 100%; padding: 15px; background: var(--primary-color); color: white; border: none; border-radius: 30px; font-weight: bold; margin-top: 20px; font-size: 18px; }
-        .log-item { background: white; padding: 15px; border-radius: 10px; margin-top: 10px; border-left: 5px solid var(--primary-color); }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .save-area { border-top: 2px dashed #ddd; pt: 15px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1 style="text-align:center; color:var(--primary-color); font-style:italic;">RUN LOG</h1>
-
-    <div class="stats-container">
-        <div class="stat-card"><div class="stat-label">週(km)</div><div id="stat-week" class="stat-value">0.0</div></div>
-        <div class="stat-card"><div class="stat-label">月(km)</div><div id="stat-month" class="stat-value">0.0</div></div>
-        <div class="stat-card"><div class="stat-label">累計(km)</div><div id="stat-total" class="stat-value">0.0</div></div>
+    <div class="stats-grid">
+        <div class="stat-box">週 <b id="stat-week">0.0</b></div>
+        <div class="stat-box">月 <b id="stat-month">0.0</b></div>
+        <div class="stat-box">累計 <b id="stat-total">0.0</b></div>
     </div>
 
-    <div id="map"></div>
+    <div class="mode-selector">
+        <button class="mode-btn active" onclick="switchMode('jog')">ジョグ</button>
+        <button class="mode-btn" onclick="switchMode('interval')">インターバル</button>
+        <button class="mode-btn" onclick="switchMode('rest')">レスト</button>
+    </div>
 
-    <div class="form-group">
-        <button id="gpsBtn" class="btn-gps start" onclick="toggleGPS()">GPS計測開始</button>
-        
-        <label>走行距離 (km)</label>
-        <input type="number" id="distance" step="0.01" placeholder="GPS停止で自動入力されます">
+    <div id="mode-jog" class="mode-content active">
+        <div id="map"></div>
+        <button id="gpsBtn" class="btn-action" style="background: var(--jog);" onclick="toggleGPS()">GPS開始</button>
+    </div>
 
-        <label>メニュー</label>
-        <input type="text" id="menu" placeholder="例: 1000m x 5">
+    <div id="mode-interval" class="mode-content">
+        <div class="card">
+            <div class="timer-display" id="sw-display">00:00.00</div>
+            <button class="btn-action" style="background: var(--int);" onclick="toggleStopwatch()" id="sw-btn">START</button>
+            <button class="btn-action" style="background: #888;" onclick="resetStopwatch()">RESET</button>
+        </div>
+    </div>
 
-        <label>シューズ</label>
-        <select id="shoe">
+    <div id="mode-rest" class="mode-content">
+        <div class="card">
+            <div class="timer-display" id="tm-display">01:30</div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-action" style="background: var(--rest);" onclick="startTimer()">開始</button>
+                <button class="btn-action" style="background: #888;" onclick="resetTimer()">90秒に戻す</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card save-area">
+        <label>距離(km)</label>
+        <input type="number" id="dist-input" step="0.01" placeholder="GPS停止で自動入力">
+        <input type="text" id="menu-input" placeholder="メニュー内容">
+        <select id="shoe-input">
             <option>練習用シューズ</option>
             <option>厚底レーシング</option>
             <option>スパイク</option>
         </select>
-
-        <button class="btn-save" onclick="saveLog()">練習を保存</button>
+        <button class="btn-action" style="background: var(--primary);" onclick="saveLog()">記録を保存</button>
     </div>
 
     <div id="history"></div>
 </div>
 
 <script>
-    let map, pathLine, watchId = null;
-    let coordinates = [];
-    let totalDistance = 0;
+    // モード切替
+    function switchMode(mode) {
+        document.querySelectorAll('.mode-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('mode-' + mode).classList.add('active');
+        event.target.classList.add('active');
+        if(mode === 'jog') setTimeout(() => map.invalidateSize(), 100);
+    }
 
+    // --- GPS / MAP ---
+    let map, pathLine, watchId = null, totalDist = 0;
     function initMap() {
-        map = L.map('map').setView([35.6812, 139.7671], 15);
+        map = L.map('map').setView([35.68, 139.76], 15);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        pathLine = L.polyline([], {color: '#007AFF', weight: 6}).addTo(map);
+        pathLine = L.polyline([], {color: '#28a745', weight: 6}).addTo(map);
     }
     initMap();
 
     function toggleGPS() {
         const btn = document.getElementById('gpsBtn');
         if (watchId === null) {
-            if (!navigator.geolocation) return alert("GPS非対応です");
-            coordinates = []; totalDistance = 0;
-            pathLine.setLatLngs([]);
+            totalDist = 0; pathLine.setLatLngs([]);
             watchId = navigator.geolocation.watchPosition(pos => {
-                const lat = pos.coords.latitude, lng = pos.coords.longitude;
-                if (coordinates.length > 0) {
-                    const last = coordinates[coordinates.length - 1];
-                    totalDistance += calculateDistance(last[0], last[1], lat, lng);
-                    // リアルタイムで入力欄に数値を反映
-                    document.getElementById('distance').value = totalDistance.toFixed(2);
+                const p = [pos.coords.latitude, pos.coords.longitude];
+                if(pathLine.getLatLngs().length > 0) {
+                    const last = pathLine.getLatLngs()[pathLine.getLatLngs().length-1];
+                    totalDist += map.distance(last, p) / 1000;
+                    document.getElementById('dist-input').value = totalDist.toFixed(2);
                 }
-                coordinates.push([lat, lng]);
-                pathLine.addLatLng([lat, lng]);
-                map.panTo([lat, lng]);
-            }, null, { enableHighAccuracy: true });
-            btn.innerText = "計測停止 (距離を確定)";
-            btn.className = "btn-gps stop";
+                pathLine.addLatLng(p); map.panTo(p);
+            }, null, {enableHighAccuracy:true});
+            btn.innerText = "GPS停止"; btn.style.background = "#dc3545";
         } else {
-            navigator.geolocation.clearWatch(watchId);
-            watchId = null;
-            btn.innerText = "GPS計測開始";
-            btn.className = "btn-gps start";
+            navigator.geolocation.clearWatch(watchId); watchId = null;
+            btn.innerText = "GPS開始"; btn.style.background = "var(--jog)";
         }
     }
 
-    function calculateDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371;
-        const dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
-        const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    // --- ストップウォッチ ---
+    let swTime = 0, swInterval = null;
+    function toggleStopwatch() {
+        const btn = document.getElementById('sw-btn');
+        if(!swInterval) {
+            let start = Date.now() - swTime;
+            swInterval = setInterval(() => {
+                swTime = Date.now() - start;
+                updateSWDisplay();
+            }, 10);
+            btn.innerText = "STOP";
+        } else {
+            clearInterval(swInterval); swInterval = null;
+            btn.innerText = "START";
+        }
     }
+    function updateSWDisplay() {
+        const ms = Math.floor((swTime%1000)/10), s = Math.floor((swTime/1000)%60), m = Math.floor(swTime/60000);
+        document.getElementById('sw-display').innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}.${ms.toString().padStart(2,'0')}`;
+    }
+    function resetStopwatch() { swTime = 0; updateSWDisplay(); }
 
+    // --- タイマー ---
+    let tmTime = 90, tmInterval = null;
+    function startTimer() {
+        if(tmInterval) return;
+        tmInterval = setInterval(() => {
+            tmTime--;
+            const m = Math.floor(tmTime/60), s = tmTime%60;
+            document.getElementById('tm-display').innerText = `${m}:${s.toString().padStart(2,'0')}`;
+            if(tmTime <= 0) { clearInterval(tmInterval); tmInterval = null; alert("休憩終了！"); }
+        }, 1000);
+    }
+    function resetTimer() { clearInterval(tmInterval); tmInterval = null; tmTime = 90; document.getElementById('tm-display').innerText = "01:30"; }
+
+    // --- 保存 ---
     function saveLog() {
         const log = {
-            date: new Date().toLocaleDateString('sv-SE'), // YYYY-MM-DD
-            distance: parseFloat(document.getElementById('distance').value) || 0,
-            menu: document.getElementById('menu').value,
-            shoe: document.getElementById('shoe').value
+            date: new Date().toLocaleDateString('ja-JP'),
+            dist: parseFloat(document.getElementById('dist-input').value) || 0,
+            menu: document.getElementById('menu-input').value,
+            shoe: document.getElementById('shoe-input').value
         };
-        if(!log.menu) return alert("メニューを入力してください");
-
+        if(!log.menu) return alert("メニューを入力してね");
         let logs = JSON.parse(localStorage.getItem('runLogs')) || [];
         logs.unshift(log);
         localStorage.setItem('runLogs', JSON.stringify(logs));
-        
-        // リセット
-        document.getElementById('distance').value = '';
-        document.getElementById('menu').value = '';
-        displayLogs();
+        location.reload();
     }
 
-    function displayLogs() {
-        const historyDiv = document.getElementById('history');
+    window.onload = () => {
         const logs = JSON.parse(localStorage.getItem('runLogs')) || [];
-        let total = 0, month = 0, week = 0;
-        const now = new Date();
-        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-        historyDiv.innerHTML = '<h3>練習履歴</h3>';
-        logs.forEach(log => {
-            const d = parseFloat(log.distance);
-            total += d;
-            const logDate = new Date(log.date);
-            if(logDate.getMonth() === now.getMonth()) month += d;
-            if(logDate >= oneWeekAgo) week += d;
-
+        let w=0, m=0, t=0;
+        logs.forEach(l => {
+            t += l.dist;
             const item = document.createElement('div');
-            item.className = 'log-item';
-            item.innerHTML = `<strong>${log.date}</strong> - ${log.shoe}<br>${log.menu}<br>🏃‍♂️ ${d.toFixed(2)}km`;
-            historyDiv.appendChild(item);
+            item.className = 'card';
+            item.innerHTML = `<b>${l.date}</b><br>${l.menu}<br>${l.dist}km (${l.shoe})`;
+            document.getElementById('history').appendChild(item);
         });
-        document.getElementById('stat-total').innerText = total.toFixed(1);
-        document.getElementById('stat-month').innerText = month.toFixed(1);
-        document.getElementById('stat-week').innerText = week.toFixed(1);
+        document.getElementById('stat-total').innerText = t.toFixed(1);
     }
-    window.onload = displayLogs;
 </script>
 </body>
 </html>
