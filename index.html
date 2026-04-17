@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUN DIARY - Custom Menu</title>
+    <title>RUN DIARY - TT Mode</title>
     <style>
         :root { --primary: #007AFF; --bg: #f2f2f7; --card: #ffffff; --today: #fff9c4; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; }
@@ -34,6 +34,9 @@
 
         .dynamic-section { background: #f9f9f9; padding: 10px; border-radius: 10px; margin-top: 10px; border-left: 4px solid var(--primary); }
         .result-box { margin-top: 10px; padding: 10px; background: #eef6ff; border-radius: 10px; font-size: 0.9rem; font-weight: bold; color: var(--primary); }
+
+        .tt-input-group { display: flex; align-items: center; gap: 5px; }
+        .tt-input-group input { text-align: center; }
 
         .btn { width: 100%; padding: 14px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-save { background: var(--primary); color: white; }
@@ -71,6 +74,7 @@
         <select id="menu-select" onchange="toggleMenuFields()">
             <option value="ジョグ">ジョグ</option>
             <option value="インターバル">インターバル</option>
+            <option value="タイムトライアル">タイムトライアル</option>
             <option value="ペース走">ペース走</option>
             <option value="ビルドアップ">ビルドアップ</option>
             <option value="レスト">レスト</option>
@@ -95,6 +99,19 @@
             <div id="int-res" class="result-box">走行合計: 0.00 km</div>
         </div>
 
+        <div id="fields-tt" class="dynamic-section" style="display:none;">
+            <label>設定距離(m または km)</label>
+            <input type="text" id="tt-dist-label" placeholder="例: 5000m, 5km">
+            <label>タイム</label>
+            <div class="tt-input-group">
+                <input type="number" id="tt-min" placeholder="分"><span>分</span>
+                <input type="number" id="tt-sec" placeholder="秒"><span>.</span>
+                <input type="number" id="tt-msec" placeholder="0" max="9"><span>秒</span>
+            </div>
+            <label>走行距離換算(km) ※累計用</label>
+            <input type="number" id="tt-dist-km" step="0.01" placeholder="5.00">
+        </div>
+
         <div id="fields-pace" class="dynamic-section" style="display:none;">
             <label>走行距離(km)</label><input type="number" id="pace-dist" step="0.1">
             <label>設定ペース(/km)</label><input type="text" id="pace-val" placeholder="3:50">
@@ -110,7 +127,7 @@
 
         <div id="fields-other" class="dynamic-section" style="display:none;">
             <label>走行距離(km)</label><input type="number" id="other-dist" step="0.01">
-            <label>メニュー名</label><input type="text" id="other-menu-name" placeholder="例：峠走、ウォーキング">
+            <label>メニュー名</label><input type="text" id="other-menu-name" placeholder="例：峠走">
             <label>メニューの内容</label><textarea id="other-content" placeholder="練習の詳細はここに" style="height:80px;"></textarea>
         </div>
 
@@ -125,10 +142,11 @@
 
     function toggleMenuFields() {
         const menu = document.getElementById('menu-select').value;
-        const ids = ['fields-jog', 'fields-int', 'fields-pace', 'fields-bu', 'fields-other'];
+        const ids = ['fields-jog', 'fields-int', 'fields-tt', 'fields-pace', 'fields-bu', 'fields-other'];
         ids.forEach(id => document.getElementById(id).style.display = 'none');
         if(menu === 'ジョグ') document.getElementById('fields-jog').style.display = 'block';
         if(menu === 'インターバル' || menu === 'レスト') document.getElementById('fields-int').style.display = 'block';
+        if(menu === 'タイムトライアル') document.getElementById('fields-tt').style.display = 'block';
         if(menu === 'ペース走') document.getElementById('fields-pace').style.display = 'block';
         if(menu === 'ビルドアップ') document.getElementById('fields-bu').style.display = 'block';
         if(menu === 'その他') document.getElementById('fields-other').style.display = 'block';
@@ -219,6 +237,12 @@
             const c = parseFloat(document.getElementById('int-count').value) || 0;
             dist = (d * c) / 1000;
             detail = `${d}m×${c} (${document.getElementById('int-rest').value})`;
+        } else if (menuType === 'タイムトライアル') {
+            dist = parseFloat(document.getElementById('tt-dist-km').value) || 0;
+            const m = document.getElementById('tt-min').value || "0";
+            const s = document.getElementById('tt-sec').value || "00";
+            const ms = document.getElementById('tt-msec').value || "0";
+            detail = `${document.getElementById('tt-dist-label').value} TT [${m}:${s.toString().padStart(2,'0')}.${ms}]`;
         } else if (menuType === 'ペース走') {
             dist = parseFloat(document.getElementById('pace-dist').value);
             detail = `設定:${document.getElementById('pace-val').value}`;
