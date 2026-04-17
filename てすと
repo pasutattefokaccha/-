@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RUN LOG - 練習記録</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        :root {
+            --primary-color: #007AFF; /* スポーティーなブルー */
+            --bg-color: #f4f7f9;
+            --card-bg: #ffffff;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            font-style: italic;
+            letter-spacing: 1px;
+        }
+
+        .form-group {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px; /* モバイルでズーム防止 */
+        }
+
+        .btn-save {
+            width: 100%;
+            padding: 15px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .btn-save:active {
+            transform: scale(0.98);
+        }
+
+        .history-section {
+            margin-top: 30px;
+        }
+
+        .log-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border-left: 5px solid var(--primary-color);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .log-menu {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .log-details {
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>RUN LOG</h1>
+
+    <div class="form-group">
+        <label>日付</label>
+        <input type="date" id="date">
+
+        <label>練習メニュー</label>
+        <input type="text" id="menu" placeholder="例: 400m x 10">
+
+        <label>タイム / 設定</label>
+        <input type="text" id="time" placeholder="例: 68s (R2')">
+
+        <label>コンディション</label>
+        <select id="condition">
+            <option value="5">⭐⭐⭐⭐⭐ (絶好調)</option>
+            <option value="4">⭐⭐⭐⭐ (良好)</option>
+            <option value="3" selected>⭐⭐⭐ (普通)</option>
+            <option value="2">⭐⭐ (微妙)</option>
+            <option value="1">⭐ (不調)</option>
+        </select>
+
+        <label>メモ</label>
+        <textarea id="memo" rows="3" placeholder="感覚など"></textarea>
+
+        <button class="btn-save" onclick="saveLog()">記録を保存</button>
+    </div>
+
+    <div class="history-section" id="history">
+        </div>
+</div>
+
+<script>
+    // 今日をデフォルト日付にする
+    document.getElementById('date').valueAsDate = new Date();
+
+    // 読み込み時に履歴を表示
+    window.onload = displayLogs;
+
+    function saveLog() {
+        const log = {
+            date: document.getElementById('date').value,
+            menu: document.getElementById('menu').value,
+            time: document.getElementById('time').value,
+            condition: document.getElementById('condition').value,
+            memo: document.getElementById('memo').value
+        };
+
+        if(!log.menu) { alert("メニューを入力してください"); return; }
+
+        let logs = JSON.parse(localStorage.getItem('runLogs')) || [];
+        logs.unshift(log); // 先頭に追加
+        localStorage.setItem('runLogs', JSON.stringify(logs));
+
+        // フォームをリセット（日付以外）
+        document.getElementById('menu').value = '';
+        document.getElementById('time').value = '';
+        document.getElementById('memo').value = '';
+
+        displayLogs();
+    }
+
+    function displayLogs() {
+        const historyDiv = document.getElementById('history');
+        const logs = JSON.parse(localStorage.getItem('runLogs')) || [];
+        
+        historyDiv.innerHTML = '<h3>過去の記録</h3>';
+        
+        logs.forEach(log => {
+            const item = document.createElement('div');
+            item.className = 'log-item';
+            item.innerHTML = `
+                <div class="log-header">
+                    <span>${log.date}</span>
+                    <span>⭐ ${log.condition}</span>
+                </div>
+                <div class="log-menu">${log.menu}</div>
+                <div class="log-details">
+                    <div>⏱ ${log.time}</div>
+                    <div style="color:#666; margin-top:5px;">${log.memo}</div>
+                </div>
+            `;
+            historyDiv.appendChild(item);
+        });
+    }
+</script>
+
+</body>
+</html>
