@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUN DIARY - Firebase Debug</title>
+    <title>RUN DIARY - Stable Cloud</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
@@ -14,22 +14,10 @@
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding-bottom: 80px; }
         
-        /* ログイン画面 */
         #auth-container { display: flex; align-items: center; justify-content: center; height: 100vh; }
         .auth-box { background: white; padding: 30px; border-radius: 20px; width: 85%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
-        #auth-error { 
-            color: #d32f2f; 
-            font-size: 0.85rem; 
-            margin-top: 15px; 
-            background: #ffebee; 
-            padding: 10px; 
-            border-radius: 8px; 
-            display: none; 
-            text-align: left;
-            word-break: break-all;
-            white-space: pre-wrap;
-        }
+        #auth-error { color: #d32f2f; font-size: 0.85rem; margin-top: 15px; background: #ffebee; padding: 10px; border-radius: 8px; display: none; text-align: left; word-break: break-all; white-space: pre-wrap; }
 
         .monthly-stats { background: var(--primary); color: white; padding: 15px; border-radius: 15px; margin-bottom: 10px; text-align: center; }
         .monthly-stats-value { font-size: 1.8rem; font-weight: bold; }
@@ -37,11 +25,11 @@
         .cal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: white; border-radius: 15px 15px 0 0; }
         .calendar { display: grid; grid-template-columns: repeat(7, 1fr); background: white; border-radius: 0 0 15px 15px; border-top: 1px solid #eee; overflow: hidden; }
         .day-label { text-align: center; font-size: 0.7rem; color: #888; padding: 10px 0; }
-        .day { min-height: 85px; padding: 5px; border-right: 1px solid #f0f0f0; border-bottom: 1px solid #f0f0f0; cursor: pointer; }
+        .day { min-height: 85px; padding: 5px; border-right: 1px solid #f0f0f0; border-bottom: 1px solid #f0f0f0; cursor: pointer; position: relative; }
         .day-num { font-size: 0.8rem; font-weight: bold; }
         .today { background: var(--today) !important; }
         
-        .cal-record { font-size: 0.6rem; margin-top: 4px; padding: 2px 4px; border-radius: 4px; }
+        .cal-record { font-size: 0.6rem; margin-top: 4px; padding: 2px 4px; border-radius: 4px; line-height: 1.2; }
         .bg-jog { background-color: #e3f2fd; color: #1565c0; border-left: 3px solid #1565c0; }
         .bg-interval { background-color: #ffebee; color: #c62828; border-left: 3px solid #c62828; }
         .bg-tt { background-color: #fffde7; color: #f9a825; border-left: 3px solid #f9a825; }
@@ -62,6 +50,8 @@
         .hidden { display: none !important; }
         .dynamic-section { background: #f9f9f9; padding: 10px; border-radius: 10px; margin-top: 10px; border-left: 4px solid var(--primary); }
         .result-box { margin-top: 10px; padding: 10px; background: #eef6ff; border-radius: 10px; font-size: 0.9rem; font-weight: bold; color: var(--primary); }
+
+        .location-area { margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 10px; font-size: 0.8rem; }
     </style>
 </head>
 <body>
@@ -95,6 +85,12 @@
 <div id="entry-modal">
     <div class="modal-content">
         <h3 id="modal-date-title"></h3>
+        
+        <div class="location-area">
+            <label>📍 気象データの取得場所</label>
+            <input type="text" id="city-name" placeholder="市区町村名 (例: 世田谷区)" style="margin-bottom:0; font-size:0.8rem;">
+        </div>
+
         <label>走行時間</label>
         <div style="display:flex; gap:10px;"><input type="time" id="start-time"><span>〜</span><input type="time" id="end-time"></div>
         <label>メニュー</label>
@@ -140,7 +136,7 @@
             <input type="text" id="other-menu-name" placeholder="メニュー名">
             <textarea id="other-content" placeholder="内容" style="height:60px;"></textarea>
         </div>
-        <button class="btn btn-save" id="save-btn" onclick="saveDiary()">日誌を保存（天気取得）</button>
+        <button class="btn btn-save" id="save-btn" onclick="saveDiary()">日誌を保存（気象取得）</button>
         <button class="btn btn-cancel" onclick="closeModal()">キャンセル</button>
     </div>
 </div>
@@ -172,7 +168,6 @@
     let selectedDateStr = "";
     let cachedDiaries = [];
 
-    // --- 認証修正ロジック ---
     const authBtn = document.getElementById('auth-btn');
     const errDiv = document.getElementById('auth-error');
 
@@ -180,46 +175,27 @@
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
         errDiv.style.display = 'none';
-        
-        if (!email || !password || password.length < 6) {
-            showError("メールと6文字以上のパスワードを入力してください");
-            return;
-        }
-
-        authBtn.innerText = "通信中...";
-        authBtn.disabled = true;
-
+        if (!email || !password || password.length < 6) { showError("メールと6文字以上のパスワードを入力してください"); return; }
+        authBtn.innerText = "通信中..."; authBtn.disabled = true;
         try {
-            // まずはログインを試みる
             await auth.signInWithEmailAndPassword(email, password);
         } catch (error) {
-            // ユーザーがいないか、パスワードが未設定の場合に新規登録
             if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-login-credentials') {
-                try {
-                    await auth.createUserWithEmailAndPassword(email, password);
-                } catch (regErr) {
-                    showError(`【重要】Firebaseの設定を確認してください。\nコード: ${regErr.code}\n理由: Authenticationで「メール/パスワード」が有効になっていない可能性があります。`);
-                }
-            } else {
-                showError(`エラー: ${error.code}\n${error.message}`);
-            }
+                try { await auth.createUserWithEmailAndPassword(email, password); } 
+                catch (regErr) { showError(`登録失敗: ${regErr.code}`); }
+            } else { showError(`エラー: ${error.code}`); }
         }
-        authBtn.innerText = "ログイン / 新規登録";
-        authBtn.disabled = false;
+        authBtn.innerText = "ログイン / 新規登録"; authBtn.disabled = false;
     });
 
-    function showError(msg) {
-        errDiv.innerText = msg;
-        errDiv.style.display = 'block';
-    }
+    function showError(msg) { errDiv.innerText = msg; errDiv.style.display = 'block'; }
 
     auth.onAuthStateChanged(user => {
         const fab = document.getElementById('fab-search');
         if (user) {
             document.getElementById('auth-container').classList.add('hidden');
             document.getElementById('app-container').classList.remove('hidden');
-            fab.style.display = 'flex';
-            loadCloudData();
+            fab.style.display = 'flex'; loadCloudData();
         } else {
             document.getElementById('auth-container').classList.remove('hidden');
             document.getElementById('app-container').classList.add('hidden');
@@ -227,7 +203,6 @@
         }
     });
 
-    // --- 以降、他の機能（修正なし） ---
     async function loadCloudData() {
         const user = auth.currentUser;
         if(!user) return;
@@ -250,16 +225,25 @@
         const firstDay = new Date(year, month, 1).getDay();
         const lastDate = new Date(year, month + 1, 0).getDate();
         for (let i = 0; i < firstDay; i++) grid.appendChild(document.createElement('div'));
+        
         let monthlyTotal = 0;
         for (let d = 1; d <= lastDate; d++) {
             const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
             const dayEl = document.createElement('div'); dayEl.className = 'day';
             if (new Date().toISOString().split('T')[0] === dateStr) dayEl.classList.add('today');
             dayEl.innerHTML = `<div class="day-num">${d}</div>`;
+            
             const record = cachedDiaries.find(item => item.date === dateStr);
             if (record) {
-                dayEl.innerHTML += `<div class="cal-record ${getColorClass(record.type)}"><span style="font-weight:bold">${record.dist}k</span></div>`;
-                monthlyTotal += parseFloat(record.dist);
+                const displayDist = parseFloat(record.dist || 0);
+                const weatherText = record.weather ? record.weather : "";
+                const tempText = record.temp ? record.temp : "";
+                
+                dayEl.innerHTML += `<div class="cal-record ${getColorClass(record.type)}">
+                    <span style="font-weight:bold">${displayDist.toFixed(2)}k</span><br>
+                    <span style="font-size:0.5rem">${weatherText} ${tempText}</span>
+                </div>`;
+                monthlyTotal += displayDist;
             }
             dayEl.onclick = () => openModal(dateStr);
             grid.appendChild(dayEl);
@@ -315,49 +299,62 @@
     function searchTT() {
         const queryVal = parseFloat(document.getElementById('search-query').value);
         const resultsDiv = document.getElementById('search-results');
-        const filtered = cachedDiaries.filter(d => d.type === 'タイムトライアル' && parseFloat(d.dist) === queryVal);
+        const filtered = cachedDiaries.filter(d => d.type === 'タイムトライアル' && parseFloat(d.dist || 0) === queryVal);
         resultsDiv.innerHTML = filtered.map(d => `<div style="padding:10px; border-bottom:1px solid #eee;">${d.date}: ${d.ttTime}</div>`).join('');
     }
 
     async function saveDiary() {
         const menuType = document.getElementById('menu-select').value;
+        const startTime = document.getElementById('start-time').value || "12:00";
+        const cityName = document.getElementById('city-name').value.trim();
         let dist = 0, detail = "", ttTime = "";
+        
         if (menuType === 'ジョグ') {
-            dist = parseFloat(document.getElementById('jog-dist').value);
-            detail = document.getElementById('jog-res').innerText;
+            dist = parseFloat(document.getElementById('jog-dist').value); detail = document.getElementById('jog-res').innerText;
         } else if (menuType === 'インターバル' || menuType === 'レスト') {
-            const d = parseFloat(document.getElementById('int-dist').value) || 0;
-            const c = parseFloat(document.getElementById('int-count').value) || 0;
-            dist = d * c;
-            detail = `${d}k×${c}`;
+            const d = parseFloat(document.getElementById('int-dist').value) || 0, c = parseFloat(document.getElementById('int-count').value) || 0;
+            dist = d * c; detail = `${d}k×${c}`;
         } else if (menuType === 'タイムトライアル') {
             dist = parseFloat(document.getElementById('tt-dist-km').value) || 0;
             ttTime = `${document.getElementById('tt-min').value}:${document.getElementById('tt-sec').value}.${document.getElementById('tt-msec').value}`;
             detail = `${dist}k TT [${ttTime}]`;
         } else if (menuType === 'その他') {
-            dist = parseFloat(document.getElementById('other-dist').value) || 0;
-            detail = document.getElementById('other-content').value;
+            dist = parseFloat(document.getElementById('other-dist').value) || 0; detail = document.getElementById('other-content').value;
         }
         if (isNaN(dist) && menuType !== 'レスト') return alert("距離を入力してください");
+
         const btn = document.getElementById('save-btn');
-        btn.innerText = "保存中..."; btn.disabled = true;
-        let w = "☁️", t = "--°C";
+        btn.innerText = "気象情報取得中..."; btn.disabled = true;
+
+        let lat, lon, w = "☁️", t = "--°C";
         try {
-            const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
-            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current_weather=true`);
-            const data = await res.json();
-            t = Math.round(data.current_weather.temperature) + "°C";
-        } catch(e) {}
+            if (cityName) {
+                const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=ja&format=json`);
+                const geoData = await geoRes.json();
+                if (geoData.results && geoData.results.length > 0) {
+                    lat = geoData.results[0].latitude; lon = geoData.results[0].longitude;
+                }
+            }
+            if (!lat || !lon) {
+                const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
+                lat = pos.coords.latitude; lon = pos.coords.longitude;
+            }
+
+            const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weathercode&start_date=${selectedDateStr}&end_date=${selectedDateStr}&timezone=Asia%2FTokyo`);
+            const weatherData = await weatherRes.json();
+            
+            const targetHour = parseInt(startTime.split(':')[0]);
+            const temp = weatherData.hourly.temperature_2m[targetHour];
+            const code = weatherData.hourly.weathercode[targetHour];
+            
+            t = Math.round(temp) + "°C";
+            const icons = { 0:"☀️", 1:"🌤️", 2:"⛅", 3:"☁️", 45:"🌫️", 48:"🌫️", 51:"☔", 61:"☔", 71:"❄️", 95:"⚡" };
+            w = icons[code] || "☁️";
+
+        } catch(e) { console.error("Weather error:", e); }
+
         const diary = { date: selectedDateStr, type: menuType, dist: dist.toFixed(2), detail: detail, weather: w, temp: t, ttTime: ttTime };
         try {
             await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDateStr).set(diary);
             closeModal(); loadCloudData();
-        } catch (e) { alert("保存失敗: " + e.message); }
-        btn.innerText = "日誌を保存（天気取得）"; btn.disabled = false;
-    }
-
-    document.getElementById('logout-btn').onclick = () => auth.signOut();
-    window.onload = renderCalendar;
-</script>
-</body>
-</html>
+        } catch (e) { alert("保存失敗: " + e.mes
