@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RUN LOG - 練習記録</title>
-    <link rel="manifest" href="manifest.json">
     <style>
         :root {
-            --primary-color: #007AFF; /* スポーティーなブルー */
+            --primary-color: #007AFF;
             --bg-color: #f4f7f9;
             --card-bg: #ffffff;
             --text-color: #333;
@@ -21,17 +20,26 @@
             padding: 20px;
         }
 
-        .container {
-            max-width: 500px;
-            margin: 0 auto;
-        }
+        .container { max-width: 500px; margin: 0 auto; }
+        h1 { text-align: center; color: var(--primary-color); font-style: italic; }
 
-        h1 {
-            text-align: center;
-            color: var(--primary-color);
-            font-style: italic;
-            letter-spacing: 1px;
+        /* 距離集計のデザイン */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
         }
+        .stat-card {
+            background: var(--primary-color);
+            color: white;
+            padding: 10px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .stat-value { font-size: 1.2em; font-weight: bold; }
+        .stat-label { font-size: 0.7em; opacity: 0.9; }
 
         .form-group {
             background: var(--card-bg);
@@ -41,70 +49,24 @@
             margin-bottom: 20px;
         }
 
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            font-size: 0.9em;
-        }
-
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; }
         input, textarea, select {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-sizing: border-box;
-            font-size: 16px; /* モバイルでズーム防止 */
+            width: 100%; padding: 12px; margin-bottom: 15px;
+            border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px;
         }
 
         .btn-save {
-            width: 100%;
-            padding: 15px;
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 30px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-
-        .btn-save:active {
-            transform: scale(0.98);
-        }
-
-        .history-section {
-            margin-top: 30px;
+            width: 100%; padding: 15px; background-color: var(--primary-color);
+            color: white; border: none; border-radius: 30px; font-size: 18px; font-weight: bold;
         }
 
         .log-item {
-            background: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            border-left: 5px solid var(--primary-color);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            background: white; padding: 15px; border-radius: 10px;
+            margin-bottom: 10px; border-left: 5px solid var(--primary-color);
         }
-
-        .log-header {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.85em;
-            color: #666;
-            margin-bottom: 5px;
-        }
-
-        .log-menu {
-            font-weight: bold;
-            font-size: 1.1em;
-        }
-
-        .log-details {
-            margin-top: 5px;
-            font-size: 0.9em;
-        }
+        .log-header { display: flex; justify-content: space-between; font-size: 0.85em; color: #666; }
+        .log-menu { font-weight: bold; }
+        .shoe-tag { font-size: 0.8em; color: var(--primary-color); font-weight: bold; }
     </style>
 </head>
 <body>
@@ -112,58 +74,73 @@
 <div class="container">
     <h1>RUN LOG</h1>
 
+    <div class="stats-container">
+        <div class="stat-card">
+            <div class="stat-label">週(km)</div>
+            <div id="stat-week" class="stat-value">0.0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">月(km)</div>
+            <div id="stat-month" class="stat-value">0.0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">累計(km)</div>
+            <div id="stat-total" class="stat-value">0.0</div>
+        </div>
+    </div>
+
     <div class="form-group">
         <label>日付</label>
         <input type="date" id="date">
 
-        <label>練習メニュー</label>
-        <input type="text" id="menu" placeholder="例: 400m x 10">
+        <label>走行距離 (km)</label>
+        <input type="number" id="distance" step="0.1" placeholder="例: 12.5">
 
-        <label>タイム / 設定</label>
-        <input type="text" id="time" placeholder="例: 68s (R2')">
-
-        <label>コンディション</label>
-        <select id="condition">
-            <option value="5">⭐⭐⭐⭐⭐ (絶好調)</option>
-            <option value="4">⭐⭐⭐⭐ (良好)</option>
-            <option value="3" selected>⭐⭐⭐ (普通)</option>
-            <option value="2">⭐⭐ (微妙)</option>
-            <option value="1">⭐ (不調)</option>
+        <label>使用シューズ</label>
+        <select id="shoe">
+            <option value="練習用シューズ">練習用シューズ</option>
+            <option value="厚底レーシング">厚底レーシング</option>
+            <option value="スパイク">スパイク</option>
+            <option value="その他">その他</option>
         </select>
 
+        <label>練習メニュー</label>
+        <input type="text" id="menu" placeholder="例: 1000m x 5">
+
+        <label>タイム / 設定</label>
+        <input type="text" id="time" placeholder="例: 3'20">
+
         <label>メモ</label>
-        <textarea id="memo" rows="3" placeholder="感覚など"></textarea>
+        <textarea id="memo" rows="2" placeholder="感覚、気象条件など"></textarea>
 
         <button class="btn-save" onclick="saveLog()">記録を保存</button>
     </div>
 
-    <div class="history-section" id="history">
-        </div>
+    <div id="history"></div>
 </div>
 
 <script>
-    // 今日をデフォルト日付にする
     document.getElementById('date').valueAsDate = new Date();
-
-    // 読み込み時に履歴を表示
     window.onload = displayLogs;
 
     function saveLog() {
         const log = {
             date: document.getElementById('date').value,
+            distance: parseFloat(document.getElementById('distance').value) || 0,
+            shoe: document.getElementById('shoe').value,
             menu: document.getElementById('menu').value,
             time: document.getElementById('time').value,
-            condition: document.getElementById('condition').value,
             memo: document.getElementById('memo').value
         };
 
         if(!log.menu) { alert("メニューを入力してください"); return; }
 
         let logs = JSON.parse(localStorage.getItem('runLogs')) || [];
-        logs.unshift(log); // 先頭に追加
+        logs.unshift(log);
         localStorage.setItem('runLogs', JSON.stringify(logs));
 
-        // フォームをリセット（日付以外）
+        // 入力欄をクリア
+        document.getElementById('distance').value = '';
         document.getElementById('menu').value = '';
         document.getElementById('time').value = '';
         document.getElementById('memo').value = '';
@@ -175,24 +152,46 @@
         const historyDiv = document.getElementById('history');
         const logs = JSON.parse(localStorage.getItem('runLogs')) || [];
         
-        historyDiv.innerHTML = '<h3>過去の記録</h3>';
+        let total = 0, month = 0, week = 0;
+        const now = new Date();
+        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+        historyDiv.innerHTML = '<h3>練習履歴</h3>';
         
         logs.forEach(log => {
+            const logDate = new Date(log.date);
+            const dist = parseFloat(log.distance);
+            
+            // 距離計算
+            total += dist;
+            if(logDate.getMonth() === now.getMonth() && logDate.getFullYear() === now.getFullYear()) {
+                month += dist;
+            }
+            if(logDate >= oneWeekAgo) {
+                week += dist;
+            }
+
+            // 履歴表示生成
             const item = document.createElement('div');
             item.className = 'log-item';
             item.innerHTML = `
                 <div class="log-header">
                     <span>${log.date}</span>
-                    <span>⭐ ${log.condition}</span>
+                    <span class="shoe-tag">👟 ${log.shoe}</span>
                 </div>
                 <div class="log-menu">${log.menu}</div>
-                <div class="log-details">
-                    <div>⏱ ${log.time}</div>
-                    <div style="color:#666; margin-top:5px;">${log.memo}</div>
+                <div style="font-size:0.9em; margin-top:5px;">
+                    <span>⏱ ${log.time}</span> | <span>🏃‍♂️ ${dist}km</span>
                 </div>
+                <div style="color:#666; font-size:0.85em; margin-top:5px;">${log.memo}</div>
             `;
             historyDiv.appendChild(item);
         });
+
+        // 集計値を更新
+        document.getElementById('stat-total').innerText = total.toFixed(1);
+        document.getElementById('stat-month').innerText = month.toFixed(1);
+        document.getElementById('stat-week').innerText = week.toFixed(1);
     }
 </script>
 
