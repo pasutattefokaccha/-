@@ -3,159 +3,209 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUN DIARY - Auto Weather</title>
+    <title>RUN DIARY - Calendar</title>
     <style>
-        :root { --primary: #007AFF; --bg: #f8f9fa; --card: #ffffff; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 500px; margin: 0 auto; }
+        :root { --primary: #007AFF; --bg: #f2f2f7; --card: #ffffff; --today: #fff9c4; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; }
         
-        h2 { font-size: 1.2rem; margin-bottom: 15px; text-align: center; }
+        /* カレンダーヘッダー */
+        .cal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: white; border-radius: 15px 15px 0 0; }
+        .cal-title { font-weight: bold; font-size: 1.2rem; }
+
+        /* カレンダー本体 */
+        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); background: white; border-radius: 0 0 15px 15px; border-top: 1px solid #eee; overflow: hidden; }
+        .day-label { text-align: center; font-size: 0.7rem; color: #888; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+        .day { min-height: 80px; padding: 5px; border-right: 1px solid #f0f0f0; border-bottom: 1px solid #f0f0f0; position: relative; cursor: pointer; }
+        .day:nth-child(7n) { border-right: none; }
+        .day-num { font-size: 0.8rem; font-weight: bold; }
+        .today { background: var(--today) !important; }
         
-        .card { background: var(--card); border-radius: 20px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        label { font-size: 0.75rem; color: #888; display: block; margin-top: 12px; font-weight: bold; }
+        /* カレンダー内の記録表示 */
+        .cal-record { font-size: 0.65rem; margin-top: 4px; line-height: 1.2; }
+        .cal-dist { color: var(--primary); font-weight: bold; display: block; }
+        .cal-weather { color: #666; font-size: 0.6rem; }
+
+        /* 入力フォーム（モーダル風） */
+        #entry-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; }
+        .modal-content { background: white; margin: 15% auto; width: 90%; max-width: 400px; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        
+        label { font-size: 0.75rem; color: #888; display: block; margin-top: 10px; }
         input, textarea { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #eee; border-radius: 10px; box-sizing: border-box; font-size: 1rem; background: #fafafa; }
-        
-        /* 時刻入力の横並び用 */
-        .row { display: flex; gap: 10px; }
-        .row div { flex: 1; }
+        .btn-row { display: flex; gap: 10px; margin-top: 20px; }
+        .btn { flex: 1; padding: 14px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer; }
+        .btn-save { background: var(--primary); color: white; }
+        .btn-cancel { background: #eee; color: #666; }
 
-        /* 天気情報の表示エリア */
-        .weather-info { font-size: 0.8rem; color: #444; background: #eef6ff; padding: 10px; border-radius: 8px; margin-top: 10px; display: none; }
-
-        .btn-save { width: 100%; padding: 16px; border-radius: 30px; border: none; background: var(--primary); color: white; font-size: 1.1rem; font-weight: bold; margin-top: 20px; cursor: pointer; }
-
-        .history-item { background: var(--card); padding: 15px; border-radius: 15px; margin-bottom: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .history-header { display: flex; justify-content: space-between; border-bottom: 1px solid #f0f0f0; padding-bottom: 5px; margin-bottom: 8px; }
-        .h-time { font-size: 0.8rem; color: #666; }
-        .h-weather { font-size: 0.8rem; color: var(--primary); }
+        .total-box { background: var(--primary); color: white; padding: 15px; border-radius: 15px; margin-bottom: 10px; text-align: center; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>RUN DIARY</h2>
+    <div class="total-box">
+        <div style="font-size:0.8rem; opacity:0.9;">今月の累計</div>
+        <div style="font-size:1.8rem; font-weight:bold;"><span id="month-total">0.0</span> km</div>
+    </div>
 
-    <div class="card">
-        <div class="row">
-            <div>
-                <label>日付</label>
-                <input type="date" id="date-input">
-            </div>
-            <div>
-                <label>走行時刻</label>
-                <input type="time" id="time-input">
-            </div>
+    <div class="cal-header">
+        <button onclick="changeMonth(-1)" style="border:none; background:none; font-size:1.2rem;">＜</button>
+        <div class="cal-title" id="current-month-display">2026年 4月</div>
+        <button onclick="changeMonth(1)" style="border:none; background:none; font-size:1.2rem;">＞</button>
+    </div>
+    
+    <div class="calendar" id="calendar-grid">
         </div>
+</div>
+
+<div id="entry-modal">
+    <div class="modal-content">
+        <h3 id="modal-date-title" style="margin-top:0;">2026/04/17</h3>
+        
+        <label>走行時刻</label>
+        <input type="time" id="time-input">
         
         <label>走行距離 (km)</label>
         <input type="number" id="dist-input" step="0.01" placeholder="0.00">
 
         <label>メニュー</label>
-        <input type="text" id="menu-input" placeholder="ジョグ、ポイント練習など">
+        <input type="text" id="menu-input" placeholder="ジョグなど">
 
-        <div id="weather-preview" class="weather-info"></div>
-
-        <button class="btn-save" id="save-btn" onclick="saveDiary()">日誌を保存（天気取得）</button>
+        <button class="btn btn-save" id="save-btn" onclick="saveDiary()">日誌を保存（天気取得）</button>
+        <button class="btn btn-cancel" onclick="closeModal()">キャンセル</button>
     </div>
-
-    <div id="history-list"></div>
 </div>
 
 <script>
+    let currentViewDate = new Date();
+    let selectedDateStr = "";
     let weatherData = { temp: "", text: "" };
 
-    // 初期値セット
-    const now = new Date();
-    document.getElementById('date-input').valueAsDate = now;
-    document.getElementById('time-input').value = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+    function renderCalendar() {
+        const grid = document.getElementById('calendar-grid');
+        grid.innerHTML = "";
+        
+        const year = currentViewDate.getFullYear();
+        const month = currentViewDate.getMonth();
+        document.getElementById('current-month-display').innerText = `${year}年 ${month + 1}月`;
 
-    // 天気アイコンの変換用
-    function getWeatherText(code) {
-        if (code === 0) return "☀️ 快晴";
-        if (code <= 3) return "☁️ 曇り";
-        if (code <= 67) return "☔ 雨";
-        if (code <= 77) return "❄️ 雪";
-        return "🌦️ 不安定";
+        // 曜日ラベル
+        const labels = ['日', '月', '火', '水', '木', '金', '土'];
+        labels.forEach(l => {
+            const el = document.createElement('div');
+            el.className = 'day-label';
+            el.innerText = l;
+            grid.appendChild(el);
+        });
+
+        const firstDay = new Date(year, month, 1).getDay();
+        const lastDate = new Date(year, month + 1, 0).getDate();
+        const diaries = JSON.parse(localStorage.getItem('runDiaries')) || [];
+
+        // 空白
+        for (let i = 0; i < firstDay; i++) {
+            grid.appendChild(document.createElement('div'));
+        }
+
+        let monthTotal = 0;
+
+        // 日付生成
+        for (let d = 1; d <= lastDate; d++) {
+            const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
+            const dayEl = document.createElement('div');
+            dayEl.className = 'day';
+            
+            // 今日の色付け
+            const today = new Date();
+            if (year === today.getFullYear() && month === today.getMonth() && d === today.getDate()) {
+                dayEl.classList.add('today');
+            }
+
+            dayEl.innerHTML = `<div class="day-num">${d}</div>`;
+            
+            // 記録の表示
+            const record = diaries.find(item => item.date === dateStr);
+            if (record) {
+                dayEl.innerHTML += `
+                    <div class="cal-record">
+                        <span class="cal-dist">${record.dist}k</span>
+                        <span class="cal-weather">${record.weather}</span>
+                    </div>`;
+                if (month === new Date(dateStr).getMonth()) monthTotal += record.dist;
+            }
+
+            dayEl.onclick = () => openModal(dateStr);
+            grid.appendChild(dayEl);
+        }
+        document.getElementById('month-total').innerText = monthTotal.toFixed(1);
     }
 
-    // 位置情報から天気を取得する関数
+    function openModal(dateStr) {
+        selectedDateStr = dateStr;
+        document.getElementById('modal-date-title').innerText = dateStr.replace(/-/g, '/');
+        const now = new Date();
+        document.getElementById('time-input').value = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+        document.getElementById('entry-modal').style.display = 'block';
+    }
+
+    function closeModal() {
+        document.getElementById('entry-modal').style.display = 'none';
+    }
+
+    function changeMonth(diff) {
+        currentViewDate.setMonth(currentViewDate.getMonth() + diff);
+        renderCalendar();
+    }
+
+    // 天気取得ロジック
     async function fetchWeather() {
         return new Promise((resolve) => {
             navigator.geolocation.getCurrentPosition(async (pos) => {
-                const lat = pos.coords.latitude;
-                const lon = pos.coords.longitude;
                 try {
-                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`);
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current_weather=true&timezone=auto`);
                     const data = await res.json();
-                    const current = data.current_weather;
-                    weatherData.temp = current.temperature + "°C";
-                    weatherData.text = getWeatherText(current.weathercode);
+                    const c = data.current_weather;
+                    const texts = {0:"☀️", 1:"🌤️", 2:"☁️", 3:"☁️", 45:"🌫️", 51:"☔", 61:"☔", 71:"❄️", 95:"⚡"};
+                    weatherData.temp = Math.round(c.temperature) + "°C";
+                    weatherData.text = texts[c.weathercode] || "☁️";
                     resolve(true);
-                } catch (e) {
-                    console.error("天気取得失敗", e);
-                    resolve(false);
-                }
-            }, () => resolve(false));
+                } catch (e) { resolve(false); }
+            }, () => resolve(false), {timeout: 5000});
         });
     }
 
     async function saveDiary() {
         const btn = document.getElementById('save-btn');
+        const dist = parseFloat(document.getElementById('dist-input').value);
+        if (!dist) return alert("距離を入れてね！");
+
         btn.innerText = "取得中...";
         btn.disabled = true;
-
-        // 天気を取得
         await fetchWeather();
 
         const diary = {
-            date: document.getElementById('date-input').value,
+            date: selectedDateStr,
             time: document.getElementById('time-input').value,
-            dist: parseFloat(document.getElementById('dist-input').value) || 0,
-            menu: document.getElementById('menu-input').value || "記録なし",
+            dist: dist,
+            menu: document.getElementById('menu-input').value || "RUN",
             temp: weatherData.temp,
             weather: weatherData.text
         };
 
-        if (diary.dist === 0) {
-            alert("距離を入力してください！");
-            btn.innerText = "日誌を保存（天気取得）";
-            btn.disabled = false;
-            return;
-        }
-
         let diaries = JSON.parse(localStorage.getItem('runDiaries')) || [];
-        diaries.unshift(diary);
+        // 同じ日の記録があれば上書き、なければ追加
+        const idx = diaries.findIndex(d => d.date === selectedDateStr);
+        if (idx > -1) diaries[idx] = diary;
+        else diaries.unshift(diary);
+
         localStorage.setItem('runDiaries', JSON.stringify(diaries));
-        
-        location.reload();
+        closeModal();
+        renderCalendar();
+        btn.innerText = "日誌を保存（天気取得）";
+        btn.disabled = false;
     }
 
-    function loadHistory() {
-        const diaries = JSON.parse(localStorage.getItem('runDiaries')) || [];
-        const list = document.getElementById('history-list');
-
-        diaries.forEach(d => {
-            const item = document.createElement('div');
-            item.className = 'history-item';
-            
-            item.innerHTML = `
-                <div class="history-header">
-                    <div>
-                        <strong>${d.date.replace(/-/g, '/')}</strong> 
-                        <span class="h-time">${d.time}〜</span>
-                    </div>
-                    <div class="h-weather">${d.weather} ${d.temp}</div>
-                </div>
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span>${d.menu}</span>
-                    <span style="font-weight:bold; color:var(--primary);">${d.dist.toFixed(2)} km</span>
-                </div>
-            `;
-            list.appendChild(item);
-        });
-    }
-
-    window.onload = loadHistory;
+    window.onload = renderCalendar;
 </script>
 
 </body>
