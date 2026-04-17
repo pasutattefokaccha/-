@@ -2,8 +2,8 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUN DIARY PRO - Full Spec</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PRO RUN DIARY</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
@@ -11,76 +11,75 @@
     
     <style>
         :root { --primary: #007AFF; --bg: #f2f2f7; --card: #ffffff; --today: #fff9c4; --success: #2ecc71; --accent: #f9a825; --rest: #95a5a6; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; overflow-x: hidden; }
         .container { max-width: 600px; margin: 0 auto; padding-bottom: 80px; }
         
-        /* システム状況表示 */
-        #system-monitor { font-size: 11px; background: #222; color: #0f0; padding: 10px; border-radius: 10px; margin-bottom: 12px; font-family: monospace; border-left: 5px solid #0f0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        #system-monitor { font-size: 10px; background: #222; color: #0f0; padding: 8px; border-radius: 8px; margin-bottom: 10px; font-family: monospace; border-left: 4px solid #0f0; }
         
         /* 認証画面 */
-        #auth-container { display: flex; align-items: center; justify-content: center; height: 70vh; flex-direction: column; }
-        .auth-box { background: white; padding: 35px; border-radius: 25px; width: 85%; max-width: 400px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
+        #auth-container { display: flex; align-items: center; justify-content: center; height: 80vh; flex-direction: column; }
+        .auth-box { background: white; padding: 25px; border-radius: 20px; width: 85%; max-width: 380px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
-        /* メイン画面ヘッダー */
-        .header-card { background: var(--primary); color: white; padding: 25px; border-radius: 20px; text-align: center; margin-bottom: 15px; }
-        .total-val { font-size: 2.5rem; font-weight: 800; letter-spacing: -1px; }
+        /* カレンダーヘッダー（月移動） */
+        .monthly-header { background: var(--primary); color: white; padding: 15px; border-radius: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .nav-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 15px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        .nav-btn:active { background: rgba(255,255,255,0.4); }
+        .monthly-info { text-align: center; }
+        .total-val { font-size: 1.8rem; font-weight: bold; }
 
-        /* カレンダー（比率改善版） */
-        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee; }
-        .day-label { text-align: center; font-size: 0.75rem; color: #aaa; padding: 10px 0; background: #fafafa; font-weight: bold; }
-        .day { aspect-ratio: 1 / 1.1; padding: 6px; border-right: 0.5px solid #f0f0f0; border-bottom: 0.5px solid #f0f0f0; cursor: pointer; position: relative; }
-        .day:active { background: #f0f0f0; }
-        .day-num { font-size: 0.9rem; font-weight: 700; }
-        .is-today { background-color: var(--today) !important; border: 2.5px solid var(--accent) !important; box-sizing: border-box; }
+        /* カレンダー本体（スマホ最適化） */
+        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #ddd; }
+        .day-label { text-align: center; font-size: 0.7rem; color: #888; padding: 5px 0; background: #fafafa; border-bottom: 1px solid #eee; }
+        .day { aspect-ratio: 1 / 1.2; padding: 4px; border-right: 0.1px solid #f0f0f0; border-bottom: 0.1px solid #f0f0f0; cursor: pointer; position: relative; overflow: hidden; }
+        .day-num { font-size: 0.75rem; font-weight: bold; }
+        .is-today { background-color: var(--today) !important; border: 1.5px solid var(--accent) !important; z-index: 1; }
         
-        /* レコードバッジ */
-        .cal-record { font-size: 0.65rem; padding: 4px; border-radius: 6px; margin-top: 4px; border-left: 4px solid #ccc; font-weight: bold; line-height: 1.2; }
+        .cal-record { font-size: 0.55rem; padding: 2px; border-radius: 3px; margin-top: 2px; border-left: 2px solid #ccc; line-height: 1.1; word-break: break-all; }
         .bg-jog { background: #e3f2fd; color: #1565c0; border-left-color: #1565c0; }
         .bg-int { background: #ffebee; color: #c62828; border-left-color: #c62828; }
         .bg-tt { background: #fffde7; color: #f9a825; border-left-color: #f9a825; }
         .bg-pace { background: #f1f8e9; color: #2e7d32; border-left-color: #2e7d32; }
         .bg-bu { background: #f3e5f5; color: #7b1fa2; border-left-color: #7b1fa2; }
+        .bg-rest { background: #f5f5f5; color: #616161; border-left-color: var(--rest); }
+        .bg-other { background: #eceff1; color: #455a64; border-left-color: #455a64; }
 
         /* モーダル */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; overflow-y: auto; backdrop-filter: blur(4px); }
-        .modal-content { background: white; margin: 5% auto; width: 92%; max-width: 500px; padding: 25px; border-radius: 25px; box-sizing: border-box; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; overflow-y: auto; }
+        .modal-content { background: white; margin: 5% auto; width: 92%; max-width: 500px; padding: 20px; border-radius: 20px; box-sizing: border-box; }
         
-        input, select, textarea { width: 100%; padding: 14px; margin: 8px 0; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 1rem; -webkit-appearance: none; }
-        input:focus { border-color: var(--primary); outline: none; }
-        .btn { width: 100%; padding: 16px; border-radius: 30px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 1.1rem; }
-        .btn-save { background: var(--success); color: white; box-shadow: 0 4px 10px rgba(46,204,113,0.3); }
+        input, select, textarea { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 1rem; }
+        .btn { width: 100%; padding: 15px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 1rem; }
+        .btn-save { background: var(--success); color: white; }
         .hidden { display: none !important; }
-        
-        /* 入力セクション */
-        .dynamic-section { background: #f8f9fa; padding: 15px; border-radius: 15px; border-left: 5px solid var(--primary); margin: 10px 0; }
-        .res-preview { color: var(--primary); font-weight: 800; font-size: 1rem; margin-top: 5px; background: #eef6ff; padding: 8px; border-radius: 8px; display: inline-block; }
+        .dynamic-section { background: #f8f9fa; padding: 12px; border-radius: 12px; border-left: 4px solid var(--primary); margin: 8px 0; }
+        .res-preview { color: var(--primary); font-weight: bold; font-size: 0.9rem; margin-top: 4px; }
 
-        .fab { position: fixed; bottom: 25px; right: 25px; width: 65px; height: 65px; background: var(--accent); color: white; border-radius: 35px; display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 6px 20px rgba(249,168,37,0.4); border: none; z-index: 900; }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th { text-align: left; padding: 12px; font-size: 0.8rem; background: #f4f4f4; }
-        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        .fab { position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: var(--accent); color: white; border-radius: 30px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; z-index: 90; }
     </style>
 </head>
 <body>
 
-<div id="system-monitor">Initializing System Components...</div>
+<div id="system-monitor">Initializing...</div>
 
 <div id="auth-container">
     <div class="auth-box">
-        <h2 style="color:var(--primary); margin-bottom:25px;">RUN DIARY PRO</h2>
+        <h2 style="color:var(--primary); margin:0 0 20px 0;">PRO RUN DIARY</h2>
         <input type="email" id="email" placeholder="メールアドレス">
         <input type="password" id="password" placeholder="パスワード">
         <button onclick="handleLogin()" class="btn" style="background:var(--primary); color:white;">ログイン</button>
         <button onclick="handleSignup()" class="btn" style="background:#5856d6; color:white;">新規登録</button>
-        <p id="auth-error" style="color:red; font-size:0.8rem; margin-top:15px; font-weight:bold;"></p>
+        <p id="auth-error" style="color:red; font-size:0.8rem; margin-top:10px;"></p>
     </div>
 </div>
 
 <div id="app-container" class="container hidden">
-    <div class="header-card">
-        <div id="month-label" style="font-size:1rem; opacity:0.8; margin-bottom:5px;"></div>
-        <div class="total-val"><span id="month-total-val">0.00</span> <small style="font-size: 1.2rem;">km</small></div>
+    <div class="monthly-header">
+        <button class="nav-btn" onclick="changeMonth(-1)">◀</button>
+        <div class="monthly-info">
+            <div id="month-label" style="font-size:0.8rem; opacity:0.9;"></div>
+            <div class="total-val"><span id="month-total-val">0.00</span> <small style="font-size:0.8rem;">km</small></div>
+        </div>
+        <button class="nav-btn" onclick="changeMonth(1)">▶</button>
     </div>
     
     <div class="calendar" id="calendar-grid"></div>
@@ -88,25 +87,20 @@
     <div style="text-align:center; margin-top:20px;">
         <button onclick="auth.signOut()" style="background:none; border:none; color:#999; text-decoration:underline;">ログアウト</button>
     </div>
-    <button class="fab" onclick="openSearch()">🔍</button>
 </div>
 
 <div id="entry-modal" class="modal">
     <div class="modal-content">
         <h3 id="modal-date-title" style="margin-top:0; color:var(--primary);"></h3>
         
-        <label style="font-size:0.8rem; font-weight:bold; color:#666;">練習時間</label>
-        <div style="display:flex; gap:10px; align-items:center;">
-            <input type="time" id="start-time" value="17:00"> <span>〜</span> <input type="time" id="end-time" value="18:30">
+        <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+            <input type="time" id="start-time" value="17:00" style="width:45%"> <span>〜</span> <input type="time" id="end-time" value="18:30" style="width:45%">
         </div>
 
-        <div style="background:#f0f4f8; padding:15px; border-radius:15px; margin:15px 0;">
-            <label style="font-size:0.85rem; font-weight:800;">📍 天気取得地点の選択</label>
-            <div style="display:flex; gap:20px; margin-top:10px;">
-                <label><input type="radio" name="loc-type" value="gps" checked onchange="toggleLoc()"> GPS現在地</label>
-                <label><input type="radio" name="loc-type" value="manual" onchange="toggleLoc()"> 手動入力</label>
-            </div>
-            <input type="text" id="loc-manual-input" placeholder="市区町村名 (例: 西東京市)" style="display:none; margin-top:10px; background:white;">
+        <div style="background:#f0f4f8; padding:12px; border-radius:12px; margin-bottom:12px; font-size:0.85rem;">
+            <label><input type="radio" name="loc-type" value="gps" checked onchange="toggleLoc()"> GPS</label>
+            <label style="margin-left:15px;"><input type="radio" name="loc-type" value="manual" onchange="toggleLoc()"> 手動(市区町村)</label>
+            <input type="text" id="loc-manual-input" placeholder="例: 西東京市" style="display:none; margin-top:8px; height:35px;">
         </div>
 
         <select id="menu-select" onchange="switchFields()">
@@ -121,55 +115,55 @@
 
         <div id="sect-jog" class="menu-sect dynamic-section">
             <input type="number" id="jog-dist" step="0.01" placeholder="距離 (km)" oninput="calcJog()">
-            <input type="number" id="jog-min" placeholder="合計時間 (分)" oninput="calcJog()">
-            <div id="jog-res" class="res-preview">平均ペース: --:--/km</div>
+            <input type="number" id="jog-min" placeholder="時間 (分)" oninput="calcJog()">
+            <div id="jog-res" class="res-preview">ペース: --:--/km</div>
         </div>
 
         <div id="sect-int" class="menu-sect dynamic-section" style="display:none;">
-            <input type="number" id="int-dist" placeholder="設定距離 (km) 例: 1.0">
+            <input type="number" id="int-dist" placeholder="1本の距離 (km)">
             <input type="number" id="int-count" placeholder="本数">
-            <input type="text" id="int-rest" placeholder="レスト (例: 200m 70秒)">
+            <input type="text" id="int-rest" placeholder="レスト内容 (例: 200m 70秒)">
         </div>
 
         <div id="sect-tt" class="menu-sect dynamic-section" style="display:none;">
             <input type="number" id="tt-dist" placeholder="距離 (km)">
             <div style="display:flex; gap:5px; align-items:center;">
-                <input type="number" id="tt-min" placeholder="分"><span>:</span>
-                <input type="number" id="tt-sec" placeholder="秒" max="59"><span>.</span>
-                <input type="number" id="tt-msec" placeholder="0" max="9">
+                <input type="number" id="tt-min" placeholder="分" style="width:30%"><span>:</span>
+                <input type="number" id="tt-sec" placeholder="秒" style="width:30%"><span>.</span>
+                <input type="number" id="tt-msec" placeholder="0" style="width:20%">
             </div>
         </div>
 
         <div id="sect-pace" class="menu-sect dynamic-section" style="display:none;">
             <input type="number" id="pace-dist" placeholder="距離 (km)" oninput="calcPaceTime()">
-            <input type="text" id="pace-val" placeholder="設定ペース (例: 4:00)" oninput="calcPaceTime()">
-            <div id="pace-res" class="res-preview">予想タイム: --:--</div>
+            <input type="text" id="pace-val" placeholder="設定ペース (例: 4:15)" oninput="calcPaceTime()">
+            <div id="pace-res" class="res-preview">合計タイム: --:--</div>
         </div>
 
-        <button class="btn btn-save" id="save-btn" onclick="saveDiary()">記録を保存 (天気を取得)</button>
-        <button class="btn" style="background:#eee; margin-top:10px;" onclick="closeModal()">キャンセル</button>
-    </div>
-</div>
-
-<div id="search-modal" class="modal">
-    <div class="modal-content" style="max-width:600px;">
-        <h3>記録検索 (タイムトライアル)</h3>
-        <input type="number" id="search-dist" placeholder="距離(km)で絞り込み">
-        <button class="btn" style="background:var(--accent); color:white;" onclick="runSearch()">検索</button>
-        <div style="max-height: 350px; overflow-y: auto; margin-top:15px; border:1px solid #eee;">
-            <table>
-                <thead><tr><th>日付</th><th>距離</th><th>記録</th><th>天気</th></tr></thead>
-                <tbody id="search-body"></tbody>
-            </table>
+        <div id="sect-bu" class="menu-sect dynamic-section" style="display:none;">
+            <input type="number" id="bu-dist" placeholder="距離 (km)">
+            <input type="text" id="bu-start-pace" placeholder="開始ペース (例: 5:00)">
+            <input type="text" id="bu-end-pace" placeholder="終了ペース (例: 4:00)">
         </div>
-        <button class="btn" style="background:#eee; margin-top:20px;" onclick="closeSearch()">閉じる</button>
+
+        <div id="sect-rest" class="menu-sect dynamic-section" style="display:none;">
+            <textarea id="rest-memo" placeholder="レストの内容 (例: 20分完全休養、マッサージ)" rows="2"></textarea>
+        </div>
+
+        <div id="sect-other" class="menu-sect dynamic-section" style="display:none;">
+            <input type="number" id="other-dist" placeholder="距離 (km)">
+            <textarea id="other-memo" placeholder="その他の内容" rows="2"></textarea>
+        </div>
+
+        <button class="btn btn-save" id="save-btn" onclick="saveDiary()">保存 (天気を取得)</button>
+        <button class="btn" style="background:#eee;" onclick="closeModal()">キャンセル</button>
     </div>
 </div>
 
 <script>
-    const sysLog = (m) => { document.getElementById('system-monitor').innerText = "Status: " + m; console.log(m); };
+    const log = (m) => { document.getElementById('system-monitor').innerText = "Status: " + m; };
 
-    // --- Firebase構成 ---
+    // --- Firebase設定 ---
     const firebaseConfig = {
         apiKey: "AIzaSyC0VeVEdEpcRP8dOvJokXq0lg2gBzloVls",
         authDomain: "runnikki-a7d37.firebaseapp.com",
@@ -179,30 +173,23 @@
         appId: "1:623990853537:web:68417f21002106b5c745e0"
     };
 
-    // 初期化とエラーチェック
-    try {
-        if (typeof firebase === 'undefined') throw new Error("Firebase SDK blocked by browser.");
-        firebase.initializeApp(firebaseConfig);
-        sysLog("Firebase Initialized.");
-    } catch(e) {
-        sysLog("FATAL ERROR: " + e.message);
-        alert("エラー: ブラウザのブロック機能(Brave Shields等)をOFFにしてください。");
-    }
-
+    firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+
     let cachedDiaries = [];
     let selectedDate = "";
+    let currentViewDate = new Date(); // 表示中の月管理用
 
-    // --- 認証監視 ---
+    // 認証監視
     auth.onAuthStateChanged(user => {
         if (user) {
-            sysLog("Session Active: " + user.email);
+            log("Logged in as " + user.email);
             document.getElementById('auth-container').classList.add('hidden');
             document.getElementById('app-container').classList.remove('hidden');
             loadData();
         } else {
-            sysLog("No Session. Please Login.");
+            log("Please Login.");
             document.getElementById('auth-container').classList.remove('hidden');
             document.getElementById('app-container').classList.add('hidden');
         }
@@ -211,45 +198,51 @@
     async function handleLogin() {
         const e = document.getElementById('email').value;
         const p = document.getElementById('password').value;
-        sysLog("Login Attempt...");
-        try { await auth.signInWithEmailAndPassword(e, p); }
-        catch(err) { sysLog("Login Failed: " + err.code); document.getElementById('auth-error').innerText = err.message; }
+        try { await auth.signInWithEmailAndPassword(e, p); } 
+        catch(err) { document.getElementById('auth-error').innerText = err.message; }
     }
 
     async function handleSignup() {
         const e = document.getElementById('email').value;
         const p = document.getElementById('password').value;
-        sysLog("Signup Attempt...");
-        try { await auth.createUserWithEmailAndPassword(e, p); alert("登録完了！"); }
-        catch(err) { alert("登録エラー: " + err.message); }
+        try { await auth.createUserWithEmailAndPassword(e, p); alert("登録完了"); } 
+        catch(err) { alert(err.message); }
     }
 
-    // --- データ処理 ---
+    // --- カレンダーロジック ---
     async function loadData() {
         const snap = await db.collection('users').doc(auth.currentUser.uid).collection('diaries').get();
         cachedDiaries = snap.docs.map(doc => doc.data());
         renderCalendar();
     }
 
+    function changeMonth(offset) {
+        currentViewDate.setMonth(currentViewDate.getMonth() + offset);
+        renderCalendar();
+    }
+
     function renderCalendar() {
         const grid = document.getElementById('calendar-grid');
         grid.innerHTML = "";
-        const now = new Date();
-        const y = now.getFullYear(); const m = now.getMonth();
-        const last = new Date(y, m+1, 0).getDate();
-        const first = new Date(y, m, 1).getDay();
         
-        document.getElementById('month-label').innerText = `${y}年 ${m+1}月`;
+        const y = currentViewDate.getFullYear();
+        const m = currentViewDate.getMonth();
+        const firstDay = new Date(y, m, 1).getDay();
+        const lastDate = new Date(y, m + 1, 0).getDate();
+        
+        document.getElementById('month-label').innerText = `${y}年 ${m + 1}月`;
+        
         ['日','月','火','水','木','金','土'].forEach(d => {
             const el = document.createElement('div'); el.className = 'day-label'; el.innerText = d; grid.appendChild(el);
         });
 
-        for(let i=0; i<first; i++) grid.appendChild(document.createElement('div'));
+        for(let i=0; i<firstDay; i++) grid.appendChild(document.createElement('div'));
 
-        const todayStr = `${y}-${(m+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}`;
-        let total = 0;
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}`;
+        let monthTotal = 0;
 
-        for(let d=1; d<=last; d++) {
+        for(let d=1; d<=lastDate; d++) {
             const ds = `${y}-${(m+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
             const el = document.createElement('div');
             el.className = 'day' + (ds === todayStr ? ' is-today' : '');
@@ -257,17 +250,17 @@
             
             const rec = cachedDiaries.find(r => r.date === ds);
             if(rec) {
-                total += parseFloat(rec.dist || 0);
-                const typeClass = {'ジョグ':'bg-jog','インターバル':'bg-int','タイムトライアル':'bg-tt','ペース走':'bg-pace'}[rec.type] || '';
-                el.innerHTML += `<div class="cal-record ${typeClass}"><b>${rec.dist}k</b><br>${rec.weather.split('℃')[0]}℃</div>`;
+                monthTotal += parseFloat(rec.dist || 0);
+                const typeClass = {'ジョグ':'bg-jog','インターバル':'bg-int','タイムトライアル':'bg-tt','ペース走':'bg-pace','ビルドアップ':'bg-bu','レスト':'bg-rest','その他':'bg-other'}[rec.type] || '';
+                el.innerHTML += `<div class="cal-record ${typeClass}"><b>${rec.dist}k</b><br>${rec.weather.split('℃')[0]}</div>`;
             }
             el.onclick = () => openModal(ds);
             grid.appendChild(el);
         }
-        document.getElementById('month-total-val').innerText = total.toFixed(2);
+        document.getElementById('month-total-val').innerText = monthTotal.toFixed(2);
     }
 
-    // --- ロジック ---
+    // --- UI制御 ---
     function toggleLoc() {
         document.getElementById('loc-manual-input').style.display = 
             document.querySelector('input[name="loc-type"]:checked').value === 'manual' ? 'block' : 'none';
@@ -276,7 +269,7 @@
     function switchFields() {
         const menu = document.getElementById('menu-select').value;
         document.querySelectorAll('.menu-sect').forEach(s => s.style.display = 'none');
-        const map = {'ジョグ':'sect-jog','インターバル':'sect-int','タイムトライアル':'sect-tt','ペース走':'sect-pace'};
+        const map = {'ジョグ':'sect-jog','インターバル':'sect-int','タイムトライアル':'sect-tt','ペース走':'sect-pace','ビルドアップ':'sect-bu','レスト':'sect-rest','その他':'sect-other'};
         if(map[menu]) document.getElementById(map[menu]).style.display = 'block';
     }
 
@@ -285,7 +278,7 @@
         const m = parseFloat(document.getElementById('jog-min').value);
         if(d && m) {
             const s = (m * 60) / d;
-            document.getElementById('jog-res').innerText = `平均ペース: ${Math.floor(s/60)}:${Math.round(s%60).toString().padStart(2,'0')}/km`;
+            document.getElementById('jog-res').innerText = `ペース: ${Math.floor(s/60)}:${Math.round(s%60).toString().padStart(2,'0')}/km`;
         }
     }
 
@@ -295,33 +288,41 @@
         if(d && pStr.includes(':')) {
             const [m, s] = pStr.split(':').map(Number);
             const totalSec = (m * 60 + s) * d;
-            document.getElementById('pace-res').innerText = `合計タイム: ${Math.floor(totalSec/60)}分${Math.round(totalSec%60)}秒`;
+            document.getElementById('pace-res').innerText = `合計: ${Math.floor(totalSec/60)}分${Math.round(totalSec%60)}秒`;
         }
     }
 
-    function openModal(d) { selectedDate = d; document.getElementById('modal-date-title').innerText = d.replace(/-/g,'/'); document.getElementById('entry-modal').style.display = 'block'; switchFields(); }
+    function openModal(d) { selectedDate = d; document.getElementById('modal-date-title').innerText = d; document.getElementById('entry-modal').style.display = 'block'; switchFields(); }
     function closeModal() { document.getElementById('entry-modal').style.display = 'none'; }
-    function openSearch() { document.getElementById('search-modal').style.display = 'block'; }
-    function closeSearch() { document.getElementById('search-modal').style.display = 'none'; }
 
     async function saveDiary() {
-        const btn = document.getElementById('save-btn');
-        btn.innerText = "データ取得中..."; btn.disabled = true;
-        
+        const btn = document.getElementById('save-btn'); btn.disabled = true; btn.innerText = "保存中...";
         const menu = document.getElementById('menu-select').value;
         let dist = 0, detail = "";
 
         if(menu==='ジョグ') {
             dist = parseFloat(document.getElementById('jog-dist').value)||0;
             detail = document.getElementById('jog-res').innerText;
+        } else if(menu==='インターバル') {
+            dist = (parseFloat(document.getElementById('int-dist').value)||0) * (parseInt(document.getElementById('int-count').value)||0);
+            detail = `${document.getElementById('int-count').value}本 (${document.getElementById('int-rest').value})`;
         } else if(menu==='タイムトライアル') {
             dist = parseFloat(document.getElementById('tt-dist').value)||0;
             detail = `${document.getElementById('tt-min').value}:${document.getElementById('tt-sec').value.padStart(2,'0')}.${document.getElementById('tt-msec').value}`;
+        } else if(menu==='ビルドアップ') {
+            dist = parseFloat(document.getElementById('bu-dist').value)||0;
+            detail = `${document.getElementById('bu-start-pace').value}→${document.getElementById('bu-end-pace').value}`;
+        } else if(menu==='ペース走') {
+            dist = parseFloat(document.getElementById('pace-dist').value)||0;
+            detail = `${document.getElementById('pace-val').value}/km`;
+        } else if(menu==='レスト') {
+            detail = document.getElementById('rest-memo').value;
+        } else if(menu==='その他') {
+            dist = parseFloat(document.getElementById('other-dist').value)||0;
+            detail = document.getElementById('other-memo').value;
         }
-        // 他のメニューも同様に取得...
 
-        // 天気API連携
-        let weather = "☁️--℃";
+        let weather = "☁️--";
         try {
             let lat, lon;
             if (document.querySelector('input[name="loc-type"]:checked').value === 'gps') {
@@ -329,23 +330,23 @@
                 lat = pos.coords.latitude; lon = pos.coords.longitude;
             } else {
                 const city = document.getElementById('loc-manual-input').value;
-                const gRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=ja`);
+                const gRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`);
                 const gData = await gRes.json();
                 lat = gData.results[0].latitude; lon = gData.results[0].longitude;
             }
             const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=weathercode,temperature_2m&start_date=${selectedDate}&end_date=${selectedDate}&timezone=Asia%2FTokyo`);
             const wData = await wRes.json();
-            const hour = parseInt(document.getElementById('start-time').value.split(':')[0]) || 0;
+            const hour = parseInt(document.getElementById('start-time').value.split(':')[0]);
             const icons = {0:"☀️",1:"🌤️",2:"⛅",3:"☁️",61:"☔",95:"⚡"};
             weather = (icons[wData.hourly.weathercode[hour]] || "☁️") + Math.round(wData.hourly.temperature_2m[hour]) + "℃";
-        } catch(e) { sysLog("Weather Error: " + e.message); }
+        } catch(e) { log("Weather skip: " + e.message); }
 
         await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDate).set({
             date: selectedDate, type: menu, dist: dist.toFixed(2), detail: detail, weather: weather,
             time: document.getElementById('start-time').value
         });
 
-        btn.innerText = "記録を保存 (天気を取得)"; btn.disabled = false;
+        btn.disabled = false; btn.innerText = "保存 (天気を取得)";
         closeModal(); loadData();
     }
 </script>
