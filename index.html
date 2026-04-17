@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUN DIARY - Direct Connection</title>
+    <title>RUN DIARY - Pro</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
@@ -25,7 +25,6 @@
         .day-label { text-align: center; font-size: 0.7rem; color: #888; padding: 10px 0; }
         .day { min-height: 85px; padding: 5px; border-right: 1px solid #f0f0f0; border-bottom: 1px solid #f0f0f0; cursor: pointer; }
         .day-num { font-size: 0.8rem; font-weight: bold; }
-        .today { background: var(--today) !important; }
         
         .cal-record { font-size: 0.6rem; margin-top: 4px; padding: 2px 4px; border-radius: 4px; }
         .bg-jog { background-color: #e3f2fd; color: #1565c0; border-left: 3px solid #1565c0; }
@@ -42,14 +41,14 @@
         input, select, textarea { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #eee; border-radius: 10px; box-sizing: border-box; font-size: 1rem; }
         .btn { width: 100%; padding: 14px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-login { background: var(--primary); color: white; }
-        .btn-signup { background: #5856d6; color: white; }
         .btn-save { background: var(--success); color: white; }
         .btn-cancel { background: #eee; color: #666; }
         .hidden { display: none !important; }
-        .dynamic-section { background: #f9f9f9; padding: 10px; border-radius: 10px; margin-top: 10px; border-left: 4px solid var(--primary); }
+        
+        /* 重要なセクション */
+        .dynamic-section { background: #f9f9f9; padding: 12px; border-radius: 10px; margin-top: 10px; border-left: 4px solid var(--primary); }
         .result-box { margin-top: 10px; padding: 10px; background: #eef6ff; border-radius: 10px; font-size: 0.9rem; font-weight: bold; color: var(--primary); }
         .search-fab { position: fixed; right: 20px; bottom: 20px; width: 60px; height: 60px; background: var(--primary); color: white; border-radius: 30px; display: none; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; z-index: 90; }
-        #debug-log { font-size: 10px; color: red; margin-top: 10px; background: #ffebeb; padding: 5px; border-radius: 5px; width: 85%; max-width: 400px; display: block; word-break: break-all; }
     </style>
 </head>
 <body>
@@ -57,18 +56,17 @@
 <div id="auth-container">
     <div class="auth-box">
         <h2 style="color:var(--primary)">RUN DIARY</h2>
-        <input type="email" id="email" placeholder="メールアドレス" autocomplete="email">
-        <input type="password" id="password" placeholder="パスワード" autocomplete="current-password">
+        <input type="email" id="email" placeholder="メールアドレス">
+        <input type="password" id="password" placeholder="パスワード">
         <button onclick="handleLogin()" class="btn btn-login">ログイン</button>
-        <button onclick="handleSignup()" class="btn btn-signup">新規アカウント作成</button>
-        <p id="auth-status-msg" style="font-size: 0.8rem; margin-top: 15px; color: #666;">状態: 待機中</p>
+        <button onclick="handleSignup()" class="btn btn-signup" style="background:#5856d6; color:white;">新規登録</button>
+        <p id="auth-msg" style="color:red; font-size:0.8rem; margin-top:10px;"></p>
     </div>
-    <div id="debug-log">デバッグ用: 準備中...</div>
 </div>
 
 <div id="app-container" class="container hidden">
     <div class="monthly-stats">
-        <div id="stats-month-label">今月の合計距離</div>
+        <div>今月の合計</div>
         <div class="monthly-stats-value"><span id="month-total-val">0.00</span> <small>km</small></div>
     </div>
     <div class="cal-header">
@@ -77,28 +75,67 @@
         <button onclick="changeMonth(1)">＞</button>
     </div>
     <div class="calendar" id="calendar-grid"></div>
-    <button id="logout-btn" onclick="auth.signOut()" style="width:100%; margin-top:20px; border:none; background:none; color:#999; font-size:0.8rem;">ログアウト</button>
+    <button onclick="auth.signOut()" style="width:100%; margin-top:20px; border:none; background:none; color:#999; font-size:0.8rem;">ログアウト</button>
 </div>
 
-<button class="search-fab" id="fab-search" onclick="openSearch()">🔍</button>
+<div id="entry-modal" class="modal">
+    <div class="modal-content">
+        <h3 id="modal-date-title"></h3>
+        
+        <label>走行時間</label>
+        <div style="display:flex; gap:10px;"><input type="time" id="start-time" value="17:00"><span>〜</span><input type="time" id="end-time" value="18:00"></div>
+        
+        <label>メニュー種別</label>
+        <select id="menu-select" onchange="updateFields()">
+            <option value="ジョグ">ジョグ</option>
+            <option value="インターバル">インターバル</option>
+            <option value="タイムトライアル">タイムトライアル</option>
+            <option value="ペース走">ペース走</option>
+            <option value="ビルドアップ">ビルドアップ</option>
+            <option value="レスト">レスト</option>
+            <option value="その他">その他</option>
+        </select>
 
-<div id="detail-modal" class="modal"><div class="modal-content"><div style="display:flex;justify-content:flex-end;gap:15px;"><button onclick="openEditFromDetail()">✏️</button><button onclick="confirmDelete()">🗑️</button><button onclick="closeDetail()">✖</button></div><h3 id="detail-date-title"></h3><div id="detail-body"></div><button class="btn btn-cancel" onclick="closeDetail()">閉じる</button></div></div>
-<div id="entry-modal" class="modal"><div class="modal-content"><h3 id="modal-date-title"></h3><input type="text" id="city-name" placeholder="市区町村名(天気用)"><div style="display:flex;gap:10px;"><input type="time" id="start-time"><span>〜</span><input type="time" id="end-time"></div><select id="menu-select" onchange="toggleMenuFields()"><option value="ジョグ">ジョグ</option><option value="インターバル">インターバル</option><option value="タイムトライアル">タイムトライアル</option><option value="ペース走">ペース走</option><option value="ビルドアップ">ビルドアップ</option><option value="レスト">レスト</option><option value="その他">その他</option></select>
-<div id="fields-jog" class="dynamic-section"><input type="number" id="jog-dist" step="0.01" placeholder="距離(km)" oninput="calcJog()"><input type="number" id="jog-min" placeholder="時間(分)" oninput="calcJog()"><div id="jog-res" class="result-box">平均ペース: --:--/km</div></div>
-<div id="fields-int" class="dynamic-section" style="display:none;"><input type="number" id="int-dist" step="0.01" placeholder="距離(km)" oninput="calcInt()"><input type="number" id="int-count" placeholder="本数" oninput="calcInt()"><input type="text" id="int-rest-text" placeholder="つなぎ（例: 200m）"><div id="int-res" class="result-box">走行合計: 0.00 km</div></div>
-<div id="fields-tt" class="dynamic-section" style="display:none;"><input type="number" id="tt-dist-km" step="0.01" placeholder="距離(km)"><div style="display:flex;gap:5px;"><input type="number" id="tt-min" placeholder="分"><input type="number" id="tt-sec" placeholder="秒"></div></div>
-<div id="fields-pace" class="dynamic-section" style="display:none;"><input type="number" id="pace-dist" placeholder="距離(km)"><input type="text" id="pace-val" placeholder="設定ペース"></div>
-<div id="fields-bu" class="dynamic-section" style="display:none;"><input type="number" id="bu-dist" placeholder="距離(km)"><input type="text" id="bu-start-pace" placeholder="スタートペース"><input type="text" id="bu-end-pace" placeholder="ゴールペース"></div>
-<div id="fields-other" class="dynamic-section" style="display:none;"><input type="number" id="other-dist" placeholder="距離(km)"><textarea id="other-content" placeholder="内容"></textarea></div>
-<button class="btn btn-save" id="save-btn" onclick="saveDiary()">保存</button><button class="btn btn-cancel" onclick="closeModal()">キャンセル</button></div></div>
+        <div id="fields-jog" class="menu-fields dynamic-section">
+            <input type="number" id="jog-dist" step="0.01" placeholder="距離 (km)" oninput="calcJogPace()">
+            <input type="number" id="jog-min" placeholder="時間 (分)" oninput="calcJogPace()">
+            <div id="jog-res" class="result-box">ペース: --:--/km</div>
+        </div>
+
+        <div id="fields-int" class="menu-fields dynamic-section" style="display:none;">
+            <input type="number" id="int-dist" step="0.1" placeholder="1本の距離 (km) 例: 1.0">
+            <input type="number" id="int-count" placeholder="本数">
+            <input type="text" id="int-rest" placeholder="レスト (例: 200m / 90s)">
+            <textarea id="int-times" placeholder="各本のタイム (任意)"></textarea>
+        </div>
+
+        <div id="fields-tt" class="menu-fields dynamic-section" style="display:none;">
+            <input type="number" id="tt-dist" step="0.01" placeholder="計測距離 (km)">
+            <div style="display:flex; gap:5px;"><input type="number" id="tt-min" placeholder="分"><input type="number" id="tt-sec" placeholder="秒"></div>
+        </div>
+
+        <div id="fields-pace" class="menu-fields dynamic-section" style="display:none;">
+            <input type="number" id="pace-dist" step="0.01" placeholder="距離 (km)">
+            <input type="text" id="pace-target" placeholder="設定ペース (例: 4'00/km)">
+        </div>
+
+        <div id="fields-bu" class="menu-fields dynamic-section" style="display:none;">
+            <input type="number" id="bu-dist" step="0.01" placeholder="合計距離 (km)">
+            <input type="text" id="bu-start" placeholder="開始ペース">
+            <input type="text" id="bu-end" placeholder="終了ペース">
+        </div>
+
+        <div id="fields-other" class="menu-fields dynamic-section" style="display:none;">
+            <input type="number" id="other-dist" step="0.1" placeholder="距離 (km)">
+            <textarea id="other-memo" placeholder="内容"></textarea>
+        </div>
+
+        <button class="btn btn-save" id="save-btn" onclick="saveDiary()">保存する</button>
+        <button class="btn btn-cancel" onclick="closeModal()">キャンセル</button>
+    </div>
+</div>
 
 <script>
-    // デバッグログ出力関数
-    function log(msg) {
-        document.getElementById('debug-log').innerText = msg;
-        console.log(msg);
-    }
-
     const firebaseConfig = {
         apiKey: "AIzaSyC0VeVEdEpcRP8dOvJokXq0lg2gBzloVls",
         authDomain: "runnikki-a7d37.firebaseapp.com",
@@ -108,14 +145,7 @@
         appId: "1:623990853537:web:68417f21002106b5c745e0"
     };
 
-    // 初期化チェック
-    try {
-        firebase.initializeApp(firebaseConfig);
-        log("Firebase初期化完了");
-    } catch(e) {
-        log("初期化エラー: " + e.message);
-    }
-
+    firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
@@ -123,120 +153,140 @@
     let selectedDateStr = "";
     let cachedDiaries = [];
 
-    // --- ログイン処理 ---
+    // --- メニュー切り替えロジック ---
+    function updateFields() {
+        const menu = document.getElementById('menu-select').value;
+        // 一旦すべて隠す
+        document.querySelectorAll('.menu-fields').forEach(el => el.style.display = 'none');
+        
+        // 選択されたものだけ出す
+        const map = {
+            'ジョグ': 'fields-jog',
+            'インターバル': 'fields-int',
+            'タイムトライアル': 'fields-tt',
+            'ペース走': 'fields-pace',
+            'ビルドアップ': 'fields-bu',
+            'レスト': '', // レストは特になし
+            'その他': 'fields-other'
+        };
+        if(map[menu]) document.getElementById(map[menu]).style.display = 'block';
+    }
+
+    function calcJogPace() {
+        const d = parseFloat(document.getElementById('jog-dist').value);
+        const m = parseFloat(document.getElementById('jog-min').value);
+        if(d > 0 && m > 0) {
+            const totalSec = (m * 60) / d;
+            const min = Math.floor(totalSec / 60);
+            const sec = Math.round(totalSec % 60).toString().padStart(2, '0');
+            document.getElementById('jog-res').innerText = `ペース: ${min}:${sec}/km`;
+        }
+    }
+
+    // --- Firebase連携 ---
     async function handleLogin() {
-        const email = document.getElementById('email').value.trim();
-        const pw = document.getElementById('password').value;
-        const msg = document.getElementById('auth-status-msg');
-        
-        if (!email || !pw) { alert("入力してください"); return; }
-        
-        log("ログイン試行中...");
-        msg.innerText = "通信中...";
-        
-        try {
-            await auth.signInWithEmailAndPassword(email, pw);
-            log("ログイン成功");
-        } catch (e) {
-            log("ログイン失敗: " + e.code);
-            msg.innerText = "エラー: " + e.message;
-        }
+        const e = document.getElementById('email').value;
+        const p = document.getElementById('password').value;
+        try { await auth.signInWithEmailAndPassword(e, p); } catch(err) { alert(err.message); }
     }
-
-    // --- 新規登録処理 ---
     async function handleSignup() {
-        const email = document.getElementById('email').value.trim();
-        const pw = document.getElementById('password').value;
-        const msg = document.getElementById('auth-status-msg');
-
-        if (!email || !pw) { alert("入力してください"); return; }
-        
-        log("新規登録試行中...");
-        msg.innerText = "アカウント作成中...";
-
-        try {
-            await auth.createUserWithEmailAndPassword(email, pw);
-            log("登録成功");
-        } catch (e) {
-            log("登録失敗: " + e.code);
-            msg.innerText = "作成エラー: " + e.message;
-        }
+        const e = document.getElementById('email').value;
+        const p = document.getElementById('password').value;
+        try { await auth.createUserWithEmailAndPassword(e, p); } catch(err) { alert(err.message); }
     }
 
-    // 認証状態の監視
     auth.onAuthStateChanged(user => {
         if (user) {
-            log("ログイン中: " + user.email);
             document.getElementById('auth-container').classList.add('hidden');
             document.getElementById('app-container').classList.remove('hidden');
-            loadCloudData();
+            loadData();
         } else {
-            log("未ログイン状態");
             document.getElementById('auth-container').classList.remove('hidden');
             document.getElementById('app-container').classList.add('hidden');
         }
     });
 
-    async function loadCloudData() {
-        const user = auth.currentUser;
-        if(!user) return;
-        try {
-            const snap = await db.collection('users').doc(user.uid).collection('diaries').get();
-            cachedDiaries = snap.docs.map(doc => doc.data());
-            renderCalendar();
-        } catch(e) {
-            log("データ取得エラー: " + e.message);
-        }
+    async function loadData() {
+        const snap = await db.collection('users').doc(auth.currentUser.uid).collection('diaries').get();
+        cachedDiaries = snap.docs.map(doc => doc.data());
+        renderCalendar();
     }
 
     function renderCalendar() {
         const grid = document.getElementById('calendar-grid');
         grid.innerHTML = "";
-        const year = currentViewDate.getFullYear();
-        const month = currentViewDate.getMonth();
-        document.getElementById('current-month-display').innerText = `${year}年 ${month + 1}月`;
-        ['日','月','火','水','木','金','土'].forEach(l => {
-            const el = document.createElement('div'); el.className = 'day-label'; el.innerText = l; grid.appendChild(el);
-        });
-        const firstDay = new Date(year, month, 1).getDay();
-        const lastDate = new Date(year, month + 1, 0).getDate();
-        for (let i = 0; i < firstDay; i++) grid.appendChild(document.createElement('div'));
+        const y = currentViewDate.getFullYear();
+        const m = currentViewDate.getMonth();
+        document.getElementById('current-month-display').innerText = `${y}年 ${m+1}月`;
         
-        let monthlyTotal = 0;
-        for (let d = 1; d <= lastDate; d++) {
-            const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
-            const dayEl = document.createElement('div'); dayEl.className = 'day';
-            dayEl.innerHTML = `<div class="day-num">${d}</div>`;
-            const record = cachedDiaries.find(item => item.date === dateStr);
-            if (record) {
-                const dist = parseFloat(record.dist || 0);
-                dayEl.innerHTML += `<div class="cal-record ${getColorClass(record.type)}"><b>${dist.toFixed(2)}k</b></div>`;
-                monthlyTotal += dist;
-                dayEl.onclick = () => openDetail(dateStr);
-            } else {
-                dayEl.onclick = () => openModal(dateStr);
+        ['日','月','火','水','木','金','土'].forEach(l => {
+            const d = document.createElement('div'); d.className='day-label'; d.innerText=l; grid.appendChild(d);
+        });
+
+        const first = new Date(y, m, 1).getDay();
+        const last = new Date(y, m+1, 0).getDate();
+        for(let i=0; i<first; i++) grid.appendChild(document.createElement('div'));
+
+        let total = 0;
+        for(let d=1; d<=last; d++) {
+            const ds = `${y}-${(m+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
+            const el = document.createElement('div'); el.className='day';
+            el.innerHTML = `<div class="day-num">${d}</div>`;
+            const rec = cachedDiaries.find(r => r.date === ds);
+            if(rec) {
+                const dist = parseFloat(rec.dist || 0);
+                total += dist;
+                el.innerHTML += `<div class="cal-record ${getColorClass(rec.type)}"><b>${dist.toFixed(1)}k</b><br>${rec.type}</div>`;
             }
-            grid.appendChild(dayEl);
+            el.onclick = () => openModal(ds);
+            grid.appendChild(el);
         }
-        document.getElementById('month-total-val').innerText = monthlyTotal.toFixed(2);
+        document.getElementById('month-total-val').innerText = total.toFixed(2);
     }
 
-    // --- その他UI操作用 (共通) ---
-    function openModal(d) { selectedDateStr = d; document.getElementById('modal-date-title').innerText = d; document.getElementById('entry-modal').style.display = 'block'; }
+    function getColorClass(t) {
+        const m = {'ジョグ':'bg-jog','インターバル':'bg-interval','タイムトライアル':'bg-tt','ペース走':'bg-pace','ビルドアップ':'bg-bu','レスト':'bg-rest'};
+        return m[t] || 'bg-other';
+    }
+
+    function openModal(d) {
+        selectedDateStr = d;
+        document.getElementById('modal-date-title').innerText = d;
+        document.getElementById('entry-modal').style.display = 'block';
+        updateFields();
+    }
     function closeModal() { document.getElementById('entry-modal').style.display = 'none'; }
-    function openDetail(d) { /* 詳細表示ロジック */ }
-    function closeDetail() { document.getElementById('detail-modal').style.display = 'none'; }
     function changeMonth(n) { currentViewDate.setMonth(currentViewDate.getMonth()+n); renderCalendar(); }
-    function toggleMenuFields() { /* メニュー切り替えロジック */ }
-    function getColorClass(t) { const m={'ジョグ':'bg-jog','インターバル':'bg-interval','タイムトライアル':'bg-tt'}; return m[t]||'bg-other'; }
 
     async function saveDiary() {
-        // 保存ロジック（前回の正常動作版を継承）
         const menu = document.getElementById('menu-select').value;
-        const dist = parseFloat(document.getElementById('jog-dist').value)||0; // 簡易化
-        const data = { date:selectedDateStr, type:menu, dist:dist.toFixed(2) };
+        let dist = 0, detail = "";
+
+        if(menu==='ジョグ') {
+            dist = parseFloat(document.getElementById('jog-dist').value)||0;
+            detail = document.getElementById('jog-res').innerText;
+        } else if(menu==='インターバル') {
+            const d = parseFloat(document.getElementById('int-dist').value)||0;
+            const c = parseFloat(document.getElementById('int-count').value)||0;
+            dist = d * c;
+            detail = `${d}k×${c} 本\nレスト:${document.getElementById('int-rest').value}\nタイム:${document.getElementById('int-times').value}`;
+        } else if(menu==='タイムトライアル') {
+            dist = parseFloat(document.getElementById('tt-dist').value)||0;
+            detail = `記録: ${document.getElementById('tt-min').value}分${document.getElementById('tt-sec').value}秒`;
+        } else if(menu==='ペース走') {
+            dist = parseFloat(document.getElementById('pace-dist').value)||0;
+            detail = `設定: ${document.getElementById('pace-target').value}`;
+        } else if(menu==='ビルドアップ') {
+            dist = parseFloat(document.getElementById('bu-dist').value)||0;
+            detail = `BU: ${document.getElementById('bu-start').value} → ${document.getElementById('bu-end').value}`;
+        } else if(menu==='その他') {
+            dist = parseFloat(document.getElementById('other-dist').value)||0;
+            detail = document.getElementById('other-memo').value;
+        }
+
+        const data = { date: selectedDateStr, type: menu, dist: dist.toFixed(2), detail: detail };
         await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDateStr).set(data);
-        closeModal(); loadCloudData();
+        closeModal(); loadData();
     }
 
     window.onload = renderCalendar;
