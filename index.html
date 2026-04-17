@@ -16,29 +16,24 @@
         :root { --primary: #007AFF; --accent: #34c759; --bg: #f2f2f7; --card: #ffffff; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; color: #333; }
         
-        /* 認証・ログイン画面 */
         #auth-container { display: flex; align-items: center; justify-content: center; height: 100vh; }
         .auth-box { background: white; padding: 30px; border-radius: 20px; width: 85%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
 
-        /* ヘッダー統計 (画像611参考) */
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 15px; background: #fff; }
         .stat-card { background: white; padding: 10px; border-radius: 12px; text-align: center; border: 2px solid #007AFF; }
         .stat-label { font-size: 0.75rem; color: #666; }
         .stat-val { font-size: 1.2rem; font-weight: bold; color: var(--primary); }
 
-        /* メイン計測画面 */
         #map { height: 300px; margin: 10px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .control-panel { padding: 15px; }
         .btn-gps { width: 100%; padding: 15px; border-radius: 30px; background: var(--accent); color: white; border: none; font-size: 1.1rem; font-weight: bold; cursor: pointer; }
 
-        /* カレンダー表示 */
         .calendar-section { padding: 15px; }
         .calendar { display: grid; grid-template-columns: repeat(7, 1fr); background: white; border-radius: 15px; overflow: hidden; }
         .day { min-height: 60px; padding: 5px; border: 0.5px solid #f0f0f0; font-size: 0.8rem; cursor: pointer; }
         .bg-jog { background-color: #e3f2fd; color: #1565c0; border-left: 3px solid #1565c0; }
         .bg-tt { background-color: #fffde7; color: #f9a825; border-left: 3px solid #f9a825; }
 
-        /* フッターメニュー */
         .search-fab { position: fixed; right: 20px; bottom: 20px; width: 55px; height: 55px; background: var(--primary); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: none; font-size: 20px; z-index: 99; }
         
         input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
@@ -89,16 +84,7 @@
 </div>
 
 <script>
-  // Import the functions you need from the SDKs you need
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-// Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-</script>) ---
+    // --- Firebase 設定 ---
     const firebaseConfig = {
         apiKey: "AIzaSyC0VeVEdEpcRP8dOvJokXq0lg2gBzloVls",
         authDomain: "runnikki-a7d37.firebaseapp.com",
@@ -108,6 +94,7 @@
         appId: "1:623990853537:web:68417f21002106b5c745e0"
     };
 
+    // 初期化
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
@@ -133,6 +120,7 @@
     async function handleAuth() {
         const e = document.getElementById('email').value;
         const p = document.getElementById('password').value;
+        if(!e || !p) return alert("入力してください");
         try {
             await auth.signInWithEmailAndPassword(e, p);
         } catch {
@@ -142,10 +130,18 @@
 
     // --- GPS計測ロジック ---
     function initMap() {
+        if(map) return;
         map = L.map('map').setView([35.68, 139.76], 15);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         pathLine = L.polyline([], {color: 'blue'}).addTo(map);
         userMarker = L.circleMarker([0,0], {radius: 8, color: 'white', fillColor: '#007AFF', fillOpacity: 1}).addTo(map);
+        
+        // 現在地取得の許可
+        navigator.geolocation.getCurrentPosition(p => {
+            const pos = [p.coords.latitude, p.coords.longitude];
+            map.setView(pos, 15);
+            userMarker.setLatLng(pos);
+        });
     }
 
     function toggleGPS() {
@@ -185,6 +181,8 @@
         const type = document.getElementById('menu-type').value;
         const date = new Date().toISOString().split('T')[0];
 
+        if(!dist) return alert("距離を入力してください");
+
         await db.collection('users').doc(user.uid).collection('diaries').doc(date).set({
             date, dist, type, timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -204,11 +202,13 @@
         const cal = document.getElementById('calendar');
         cal.innerHTML = "";
         const now = new Date();
-        document.getElementById('cal-month-title').innerText = `${now.getFullYear()}年 ${now.getMonth()+1}月`;
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        document.getElementById('cal-month-title').innerText = `${year}年 ${month + 1}月`;
         
-        // 簡易カレンダー生成ロジック (30日分)
-        for(let i=1; i<=31; i++) {
-            const dateStr = `2026-04-${i.toString().padStart(2,'0')}`;
+        const lastDate = new Date(year, month + 1, 0).getDate();
+        for(let i=1; i<=lastDate; i++) {
+            const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${i.toString().padStart(2, '0')}`;
             const rec = records.find(r => r.date === dateStr);
             const dayEl = document.createElement('div');
             dayEl.className = 'day' + (rec ? ` bg-${rec.type === 'ジョグ' ? 'jog' : 'tt'}` : '');
@@ -221,7 +221,7 @@
         let total = 0;
         records.forEach(r => total += parseFloat(r.dist || 0));
         document.getElementById('total-dist').innerText = total.toFixed(1);
-        document.getElementById('month-dist').innerText = total.toFixed(1); // 簡易的に累計＝今月
+        document.getElementById('month-dist').innerText = total.toFixed(1);
     }
 </script>
 </body>
