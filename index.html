@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUN DIARY - TT Mode</title>
+    <title>RUN DIARY - Color Coded</title>
     <style>
         :root { --primary: #007AFF; --bg: #f2f2f7; --card: #ffffff; --today: #fff9c4; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; }
@@ -20,8 +20,17 @@
         .day-num { font-size: 0.8rem; font-weight: bold; }
         .today { background: var(--today) !important; }
         
-        .cal-record { font-size: 0.6rem; margin-top: 4px; line-height: 1.2; }
-        .cal-dist { color: var(--primary); font-weight: bold; display: block; }
+        /* メニュー別背景色 */
+        .cal-record { font-size: 0.6rem; margin-top: 4px; line-height: 1.2; padding: 2px 4px; border-radius: 4px; }
+        .bg-jog { background-color: #e3f2fd; color: #1565c0; border-left: 3px solid #1565c0; }
+        .bg-interval { background-color: #ffebee; color: #c62828; border-left: 3px solid #c62828; }
+        .bg-tt { background-color: #fffde7; color: #f9a825; border-left: 3px solid #f9a825; }
+        .bg-pace { background-color: #f1f8e9; color: #2e7d32; border-left: 3px solid #2e7d32; }
+        .bg-bu { background-color: #f3e5f5; color: #7b1fa2; border-left: 3px solid #7b1fa2; }
+        .bg-rest { background-color: #eeeeee; color: #616161; }
+        .bg-other { background-color: #e0f7fa; color: #00838f; }
+
+        .cal-dist { font-weight: bold; display: block; }
 
         #entry-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; overflow-y: auto; }
         .modal-content { background: white; margin: 5% auto; width: 90%; max-width: 450px; padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
@@ -101,15 +110,15 @@
 
         <div id="fields-tt" class="dynamic-section" style="display:none;">
             <label>設定距離(m または km)</label>
-            <input type="text" id="tt-dist-label" placeholder="例: 5000m, 5km">
+            <input type="text" id="tt-dist-label" placeholder="例: 5000m">
             <label>タイム</label>
             <div class="tt-input-group">
                 <input type="number" id="tt-min" placeholder="分"><span>分</span>
                 <input type="number" id="tt-sec" placeholder="秒"><span>.</span>
                 <input type="number" id="tt-msec" placeholder="0" max="9"><span>秒</span>
             </div>
-            <label>走行距離換算(km) ※累計用</label>
-            <input type="number" id="tt-dist-km" step="0.01" placeholder="5.00">
+            <label>走行距離換算(km)</label>
+            <input type="number" id="tt-dist-km" step="0.01">
         </div>
 
         <div id="fields-pace" class="dynamic-section" style="display:none;">
@@ -128,7 +137,7 @@
         <div id="fields-other" class="dynamic-section" style="display:none;">
             <label>走行距離(km)</label><input type="number" id="other-dist" step="0.01">
             <label>メニュー名</label><input type="text" id="other-menu-name" placeholder="例：峠走">
-            <label>メニューの内容</label><textarea id="other-content" placeholder="練習の詳細はここに" style="height:80px;"></textarea>
+            <label>内容</label><textarea id="other-content" style="height:60px;"></textarea>
         </div>
 
         <button class="btn btn-save" id="save-btn" onclick="saveDiary()">日誌を保存（天気取得）</button>
@@ -169,6 +178,17 @@
         document.getElementById('int-res').innerText = `走行合計: ${(d * c / 1000).toFixed(2)} km`;
     }
 
+    // メニューに応じたカラークラスを返す
+    function getColorClass(menuType) {
+        if(menuType === 'ジョグ') return 'bg-jog';
+        if(menuType === 'インターバル') return 'bg-interval';
+        if(menuType === 'タイムトライアル') return 'bg-tt';
+        if(menuType === 'ペース走') return 'bg-pace';
+        if(menuType === 'ビルドアップ') return 'bg-bu';
+        if(menuType === 'レスト') return 'bg-rest';
+        return 'bg-other';
+    }
+
     function renderCalendar() {
         const grid = document.getElementById('calendar-grid');
         grid.innerHTML = "";
@@ -197,9 +217,11 @@
             dayEl.innerHTML = `<div class="day-num">${d}</div>`;
             const record = diaries.find(item => item.date === dateStr);
             if (record) {
-                dayEl.innerHTML += `<div class="cal-record">
+                // ここでカラークラスを適用
+                const colorClass = getColorClass(record.type);
+                dayEl.innerHTML += `<div class="cal-record ${colorClass}">
                     <span class="cal-dist">${record.dist}k</span>
-                    <span style="font-size:0.55rem">${record.weather} ${record.temp}</span>
+                    <span style="font-size:0.5rem">${record.weather} ${record.temp}</span>
                 </div>`;
                 monthlyTotal += parseFloat(record.dist);
             }
@@ -242,7 +264,7 @@
             const m = document.getElementById('tt-min').value || "0";
             const s = document.getElementById('tt-sec').value || "00";
             const ms = document.getElementById('tt-msec').value || "0";
-            detail = `${document.getElementById('tt-dist-label').value} TT [${m}:${s.toString().padStart(2,'0')}.${ms}]`;
+            detail = `${document.getElementById('tt-dist-label').value} TT [${m}:${s}.${ms}]`;
         } else if (menuType === 'ペース走') {
             dist = parseFloat(document.getElementById('pace-dist').value);
             detail = `設定:${document.getElementById('pace-val').value}`;
@@ -255,7 +277,7 @@
             detail = document.getElementById('other-content').value;
         }
 
-        if (isNaN(dist) && menuType !== 'レスト') return alert("走行データを入力してください");
+        if (isNaN(dist) && menuType !== 'レスト') return alert("データを入力してください");
 
         const btn = document.getElementById('save-btn');
         btn.innerText = "データ取得中..."; btn.disabled = true;
@@ -270,7 +292,17 @@
             t = Math.round(data.hourly.temperature_2m[targetHour] || data.current_weather.temperature) + "°C";
         } catch(e) {}
 
-        const diary = { date: selectedDateStr, startTime: startTime, endTime: endTime, menu: finalMenuName, dist: dist.toFixed(2), detail: detail, weather: w, temp: t };
+        // 保存用データに type を追加
+        const diary = { 
+            date: selectedDateStr, 
+            type: menuType, 
+            menu: finalMenuName, 
+            dist: dist.toFixed(2), 
+            detail: detail, 
+            weather: w, 
+            temp: t 
+        };
+
         let diaries = JSON.parse(localStorage.getItem('runDiaries')) || [];
         const idx = diaries.findIndex(d => d.date === selectedDateStr);
         if (idx > -1) diaries[idx] = diary; else diaries.unshift(diary);
