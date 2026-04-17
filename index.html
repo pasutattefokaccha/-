@@ -26,7 +26,7 @@
 
         #map { height: 300px; margin: 10px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .control-panel { padding: 15px; }
-        .btn-gps { width: 100%; padding: 15px; border-radius: 30px; background: var(--accent); color: white; border: none; font-size: 1.1rem; font-weight: bold; cursor: pointer; }
+        .btn-gps { width: 100%; padding: 15px; border-radius: 30px; background: var(--accent); color: white; border: none; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
 
         .calendar-section { padding: 15px; }
         .calendar { display: grid; grid-template-columns: repeat(7, 1fr); background: white; border-radius: 15px; overflow: hidden; }
@@ -34,8 +34,6 @@
         .bg-jog { background-color: #e3f2fd; color: #1565c0; border-left: 3px solid #1565c0; }
         .bg-tt { background-color: #fffde7; color: #f9a825; border-left: 3px solid #f9a825; }
 
-        .search-fab { position: fixed; right: 20px; bottom: 20px; width: 55px; height: 55px; background: var(--primary); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: none; font-size: 20px; z-index: 99; }
-        
         input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
         .hidden { display: none; }
     </style>
@@ -46,8 +44,9 @@
     <div class="auth-box">
         <h2 style="color:var(--primary)">RUN NIKKI</h2>
         <input type="email" id="email" placeholder="メールアドレス">
-        <input type="password" id="password" placeholder="パスワード">
-        <button class="btn-gps" onclick="handleAuth()">ログイン / 新規登録</button>
+        <input type="password" id="password" placeholder="パスワード(6文字以上)">
+        <button id="auth-btn" class="btn-gps" onclick="handleAuth()">ログイン / 新規登録</button>
+        <p id="auth-error" style="color:red; font-size:0.8rem; margin-top:10px;"></p>
     </div>
 </div>
 
@@ -57,12 +56,9 @@
         <div class="stat-card"><div class="stat-label">月</div><div class="stat-val" id="month-dist">0.0</div></div>
         <div class="stat-card"><div class="stat-label">累計</div><div class="stat-val" id="total-dist">0.0</div></div>
     </div>
-
     <div id="map"></div>
-
     <div class="control-panel">
         <button id="gps-btn" class="btn-gps" onclick="toggleGPS()">GPS計測開始</button>
-        
         <div style="margin-top:20px; background:white; padding:15px; border-radius:15px;">
             <input type="number" id="manual-dist" placeholder="距離(km)" step="0.01">
             <select id="menu-type">
@@ -73,14 +69,12 @@
             </select>
             <button class="btn-gps" style="background:var(--primary)" onclick="saveRecord()">日誌をクラウドに保存</button>
         </div>
+        <button onclick="firebase.auth().signOut()" style="margin-top:20px; border:none; background:none; color:#999; width:100%;">ログアウト</button>
     </div>
-
     <div class="calendar-section">
         <div id="cal-month-title" style="font-weight:bold; margin-bottom:10px;"></div>
         <div class="calendar" id="calendar"></div>
     </div>
-    
-    <button class="search-fab" onclick="alert('TT検索画面を開く')">🔍</button>
 </div>
 
 <script>
@@ -94,7 +88,7 @@
         appId: "1:623990853537:web:68417f21002106b5c745e0"
     };
 
-    // 初期化
+    // Firebaseの初期化
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
@@ -104,12 +98,12 @@
     let currentCoords = [];
     let totalKm = 0;
 
-    // --- 認証管理 ---
+    // 認証状態の監視
     auth.onAuthStateChanged(user => {
         if (user) {
             document.getElementById('auth-container').classList.add('hidden');
             document.getElementById('app-container').classList.remove('hidden');
-            initMap();
+            setTimeout(initMap, 500); // 描画タイミングをずらす
             loadCloudData();
         } else {
             document.getElementById('auth-container').classList.remove('hidden');
@@ -117,26 +111,43 @@
         }
     });
 
+    // ログイン・登録処理
     async function handleAuth() {
         const e = document.getElementById('email').value;
         const p = document.getElementById('password').value;
-        if(!e || !p) return alert("入力してください");
+        const errEl = document.getElementById('auth-error');
+        errEl.innerText = "通信中...";
+
+        if(!e || !p) {
+            errEl.innerText = "メールとパスワードを入力してください";
+            return;
+        }
+
         try {
+            // まずログインを試みる
             await auth.signInWithEmailAndPassword(e, p);
-        } catch {
-            await auth.createUserWithEmailAndPassword(e, p);
+        } catch (error) {
+            // ユーザーがいない場合は新規登録を試みる
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                try {
+                    await auth.createUserWithEmailAndPassword(e, p);
+                } catch (regError) {
+                    errEl.innerText = "エラー: " + regError.message;
+                }
+            } else {
+                errEl.innerText = "エラー: " + error.message;
+            }
         }
     }
 
-    // --- GPS計測ロジック ---
+    // --- 以下、GPS・カレンダー関連の関数 ---
     function initMap() {
-        if(map) return;
+        if (map) return;
         map = L.map('map').setView([35.68, 139.76], 15);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         pathLine = L.polyline([], {color: 'blue'}).addTo(map);
         userMarker = L.circleMarker([0,0], {radius: 8, color: 'white', fillColor: '#007AFF', fillOpacity: 1}).addTo(map);
         
-        // 現在地取得の許可
         navigator.geolocation.getCurrentPosition(p => {
             const pos = [p.coords.latitude, p.coords.longitude];
             map.setView(pos, 15);
@@ -155,7 +166,7 @@
         } else {
             totalKm = 0; currentCoords = [];
             watchId = navigator.geolocation.watchPosition(updatePos, null, {enableHighAccuracy: true});
-            btn.innerText = "計測停止 (保存は下で)";
+            btn.innerText = "計測停止";
             btn.style.background = "#ff3b30";
         }
     }
@@ -174,20 +185,23 @@
         map.panTo(newPoint);
     }
 
-    // --- クラウド保存・読み込み ---
     async function saveRecord() {
         const user = auth.currentUser;
         const dist = document.getElementById('manual-dist').value;
         const type = document.getElementById('menu-type').value;
-        const date = new Date().toISOString().split('T')[0];
+        const date = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD
 
         if(!dist) return alert("距離を入力してください");
 
-        await db.collection('users').doc(user.uid).collection('diaries').doc(date).set({
-            date, dist, type, timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        alert("クラウドに保存しました！");
-        loadCloudData();
+        try {
+            await db.collection('users').doc(user.uid).collection('diaries').doc(date).set({
+                date, dist, type, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            alert("クラウドに保存しました！");
+            loadCloudData();
+        } catch (e) {
+            alert("保存失敗: " + e.message);
+        }
     }
 
     async function loadCloudData() {
