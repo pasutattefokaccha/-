@@ -3,259 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUN LOG - Custom Shoe Edition</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <title>RUN DIARY - Auto Weather</title>
     <style>
-        :root { --primary: #007AFF; --jog: #34A853; --int: #FBBC05; --rest: #4285F4; --bg: #f8f9fa; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 50px; }
-        .container { max-width: 500px; margin: 0 auto; padding: 15px; }
+        :root { --primary: #007AFF; --bg: #f8f9fa; --card: #ffffff; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 500px; margin: 0 auto; }
         
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
-        .stat-box { background: white; padding: 10px; border-radius: 12px; text-align: center; border-bottom: 4px solid var(--primary); }
-        .stat-box b { font-size: 1.1rem; color: var(--primary); }
-
-        .mode-selector { display: flex; background: #e0e0e0; border-radius: 12px; padding: 4px; margin-bottom: 15px; }
-        .mode-btn { flex: 1; border: none; padding: 10px; border-radius: 9px; font-weight: bold; background: transparent; }
-        .mode-btn.active { background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-
-        #map { height: 350px; width: 100%; border-radius: 15px; margin-bottom: 15px; background: #ddd; z-index: 1; }
+        h2 { font-size: 1.2rem; margin-bottom: 15px; text-align: center; }
         
-        .current-location-icon {
-            background: #4285F4; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 10px rgba(66, 133, 244, 0.6);
-        }
-        .current-location-icon::after {
-            content: ""; display: block; width: 12px; height: 12px; border-radius: 50%; background: rgba(66, 133, 244, 0.4); animation: pulse 2s infinite;
-        }
-        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(3); opacity: 0; } }
-
-        .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        .timer-display { font-size: 3.5rem; text-align: center; font-weight: bold; font-family: monospace; }
-        .btn-action { width: 100%; padding: 16px; border-radius: 30px; border: none; color: white; font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
+        .card { background: var(--card); border-radius: 20px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        label { font-size: 0.75rem; color: #888; display: block; margin-top: 12px; font-weight: bold; }
+        input, textarea { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #eee; border-radius: 10px; box-sizing: border-box; font-size: 1rem; background: #fafafa; }
         
-        .timer-setup { display: flex; gap: 10px; justify-content: center; margin-bottom: 15px; align-items: center; }
-        .timer-setup input { width: 70px !important; text-align: center; margin: 0; }
-        .quick-set { display: flex; gap: 5px; margin-bottom: 15px; justify-content: center; flex-wrap: wrap; }
-        .q-btn { background: #eee; border: none; padding: 8px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+        /* 時刻入力の横並び用 */
+        .row { display: flex; gap: 10px; }
+        .row div { flex: 1; }
 
-        input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
-        
-        /* 靴セクションのスタイル */
-        .shoe-upload-area { margin-top: 10px; text-align: center; }
-        #shoe-preview { max-width: 100%; height: 120px; object-fit: cover; border-radius: 10px; display: none; margin: 10px auto; border: 1px solid #eee; }
-        .history-shoe-img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin-top: 5px; display: block; }
+        /* 天気情報の表示エリア */
+        .weather-info { font-size: 0.8rem; color: #444; background: #eef6ff; padding: 10px; border-radius: 8px; margin-top: 10px; display: none; }
 
-        .history-item { background: white; padding: 12px; border-radius: 10px; margin-bottom: 8px; border-left: 5px solid var(--primary); display: flex; justify-content: space-between; align-items: flex-start; }
+        .btn-save { width: 100%; padding: 16px; border-radius: 30px; border: none; background: var(--primary); color: white; font-size: 1.1rem; font-weight: bold; margin-top: 20px; cursor: pointer; }
+
+        .history-item { background: var(--card); padding: 15px; border-radius: 15px; margin-bottom: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .history-header { display: flex; justify-content: space-between; border-bottom: 1px solid #f0f0f0; padding-bottom: 5px; margin-bottom: 8px; }
+        .h-time { font-size: 0.8rem; color: #666; }
+        .h-weather { font-size: 0.8rem; color: var(--primary); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="stats-grid">
-        <div class="stat-box"><div>週</div><b id="stat-week">0.0</b></div>
-        <div class="stat-box"><div>月</div><b id="stat-month">0.0</b></div>
-        <div class="stat-box"><div>累計</div><b id="stat-total">0.0</b></div>
-    </div>
-
-    <div class="mode-selector">
-        <button id="btn-jog" class="mode-btn active" onclick="switchMode('jog')">ジョグ</button>
-        <button id="btn-interval" class="mode-btn" onclick="switchMode('interval')">計測</button>
-        <button id="btn-rest" class="mode-btn" onclick="switchMode('rest')">レスト</button>
-    </div>
-
-    <div id="mode-jog" class="mode-tab">
-        <div id="map"></div>
-        <button id="gpsBtn" class="btn-action" style="background: #34A853;" onclick="toggleGPS()">GPS計測開始</button>
-    </div>
-
-    <div id="mode-interval" class="mode-tab" style="display: none;">
-        <div class="card">
-            <div class="timer-display" id="sw-display">00:00.00</div>
-            <button id="sw-btn" class="btn-action" style="background: var(--int);" onclick="toggleStopwatch()">START</button>
-            <button class="btn-action" style="background: #888;" onclick="resetStopwatch()">RESET</button>
-        </div>
-    </div>
-
-    <div id="mode-rest" class="mode-tab" style="display: none;">
-        <div class="card">
-            <div class="timer-display" id="tm-display">01:30</div>
-            <div class="quick-set">
-                <button class="q-btn" onclick="setTimer(30)">30s</button>
-                <button class="q-btn" onclick="setTimer(60)">60s</button>
-                <button class="q-btn" onclick="setTimer(90)">90s</button>
-                <button class="q-btn" onclick="setTimer(120)">120s</button>
-            </div>
-            <div class="timer-setup">
-                <input type="number" id="tm-min" value="1" min="0"> 分
-                <input type="number" id="tm-sec" value="30" min="0" max="59"> 秒
-            </div>
-            <button id="tm-start-btn" class="btn-action" style="background: var(--rest);" onclick="toggleTimer()">開始</button>
-            <button class="btn-action" style="background: #888;" onclick="resetTimer()">リセット</button>
-        </div>
-    </div>
+    <h2>RUN DIARY</h2>
 
     <div class="card">
-        <label style="font-size: 0.8rem; color: #666;">走行距離 (km)</label>
-        <input type="number" id="dist-input" step="0.01" placeholder="0.00">
-        <input type="text" id="menu-input" placeholder="メニュー名（例：1000m×5）">
-        
-        <div style="border-top: 1px solid #eee; margin-top: 10px; padding-top: 10px;">
-            <label style="font-size: 0.8rem; color: #666;">使用シューズ</label>
-            <input type="text" id="shoe-name-input" placeholder="シューズの名前を入力">
-            <div class="shoe-upload-area">
-                <input type="file" id="shoe-photo-input" accept="image/*" style="display: none;" onchange="previewShoe(this)">
-                <button type="button" onclick="document.getElementById('shoe-photo-input').click()" style="background: #eee; border: 1px solid #ddd; padding: 8px 15px; border-radius: 8px; font-size: 0.8rem; width: 100%;">📸 シューズの写真を撮る/選ぶ</button>
-                <img id="shoe-preview">
+        <div class="row">
+            <div>
+                <label>日付</label>
+                <input type="date" id="date-input">
+            </div>
+            <div>
+                <label>走行時刻</label>
+                <input type="time" id="time-input">
             </div>
         </div>
+        
+        <label>走行距離 (km)</label>
+        <input type="number" id="dist-input" step="0.01" placeholder="0.00">
 
-        <button class="btn-action" style="background: var(--primary); margin-top: 15px;" onclick="saveLog()">練習を保存</button>
+        <label>メニュー</label>
+        <input type="text" id="menu-input" placeholder="ジョグ、ポイント練習など">
+
+        <div id="weather-preview" class="weather-info"></div>
+
+        <button class="btn-save" id="save-btn" onclick="saveDiary()">日誌を保存（天気取得）</button>
     </div>
-    <div id="history"></div>
+
+    <div id="history-list"></div>
 </div>
 
 <script>
-    let map, pathLine, userMarker, watchId = null, totalDist = 0, currentShoeBase64 = "";
+    let weatherData = { temp: "", text: "" };
 
-    function initMap() {
-        if (map) return;
-        map = L.map('map').setView([35.681, 139.767], 15);
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
-        pathLine = L.polyline([], {color: '#4285F4', weight: 6}).addTo(map);
-        const curIcon = L.divIcon({className: 'current-location-icon', iconSize: [12, 12]});
-        userMarker = L.marker([35.681, 139.767], {icon: curIcon}).addTo(map);
-        navigator.geolocation.getCurrentPosition(pos => {
-            const p = [pos.coords.latitude, pos.coords.longitude];
-            map.setView(p, 16); userMarker.setLatLng(p);
-        }, () => {}, {enableHighAccuracy: true});
+    // 初期値セット
+    const now = new Date();
+    document.getElementById('date-input').valueAsDate = now;
+    document.getElementById('time-input').value = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+
+    // 天気アイコンの変換用
+    function getWeatherText(code) {
+        if (code === 0) return "☀️ 快晴";
+        if (code <= 3) return "☁️ 曇り";
+        if (code <= 67) return "☔ 雨";
+        if (code <= 77) return "❄️ 雪";
+        return "🌦️ 不安定";
     }
 
-    function switchMode(mode) {
-        document.querySelectorAll('.mode-tab').forEach(el => el.style.display = 'none');
-        document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-        document.getElementById('mode-' + mode).style.display = 'block';
-        document.getElementById('btn-' + mode).classList.add('active');
-        if (mode === 'jog') setTimeout(() => { if(!map) initMap(); map.invalidateSize(); }, 300);
-    }
-
-    function toggleGPS() {
-        const btn = document.getElementById('gpsBtn');
-        if (watchId === null) {
-            totalDist = 0; pathLine.setLatLngs([]);
-            watchId = navigator.geolocation.watchPosition(pos => {
-                const p = [pos.coords.latitude, pos.coords.longitude];
-                userMarker.setLatLng(p);
-                if(pathLine.getLatLngs().length > 0) {
-                    const last = pathLine.getLatLngs()[pathLine.getLatLngs().length-1];
-                    totalDist += map.distance(last, p) / 1000;
-                    document.getElementById('dist-input').value = totalDist.toFixed(2);
+    // 位置情報から天気を取得する関数
+    async function fetchWeather() {
+        return new Promise((resolve) => {
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                try {
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`);
+                    const data = await res.json();
+                    const current = data.current_weather;
+                    weatherData.temp = current.temperature + "°C";
+                    weatherData.text = getWeatherText(current.weathercode);
+                    resolve(true);
+                } catch (e) {
+                    console.error("天気取得失敗", e);
+                    resolve(false);
                 }
-                pathLine.addLatLng(p); map.panTo(p);
-            }, null, {enableHighAccuracy:true});
-            btn.innerText = "計測停止"; btn.style.background = "#EA4335";
-        } else {
-            navigator.geolocation.clearWatch(watchId); watchId = null;
-            btn.innerText = "GPS計測開始"; btn.style.background = "#34A853";
-        }
+            }, () => resolve(false));
+        });
     }
 
-    // ストップウォッチ
-    let swTime=0, swInt=null;
-    function toggleStopwatch(){
-        const b = document.getElementById('sw-btn');
-        if(!swInt){
-            let s = Date.now()-swTime;
-            swInt = setInterval(()=>{
-                swTime = Date.now()-s;
-                const ms = Math.floor((swTime%1000)/10), sec = Math.floor((swTime/1000)%60), min = Math.floor(swTime/60000);
-                document.getElementById('sw-display').innerText = `${min.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}.${ms.toString().padStart(2,'0')}`;
-            },10);
-            b.innerText="STOP";
-        } else { clearInterval(swInt); swInt=null; b.innerText="START"; }
-    }
-    function resetStopwatch(){ swTime=0; document.getElementById('sw-display').innerText="00:00.00"; }
+    async function saveDiary() {
+        const btn = document.getElementById('save-btn');
+        btn.innerText = "取得中...";
+        btn.disabled = true;
 
-    // タイマー
-    let tmTime=90, tmInt=null;
-    function setTimer(sec) {
-        tmTime = sec;
-        document.getElementById('tm-min').value = Math.floor(sec / 60);
-        document.getElementById('tm-sec').value = sec % 60;
-        updateTmDisp();
-    }
-    function updateTmDisp() {
-        document.getElementById('tm-display').innerText = `${Math.floor(tmTime/60).toString().padStart(2,'0')}:${(tmTime%60).toString().padStart(2,'0')}`;
-    }
-    function toggleTimer(){
-        const btn = document.getElementById('tm-start-btn');
-        if(!tmInt){
-            const m = parseInt(document.getElementById('tm-min').value) || 0;
-            const s = parseInt(document.getElementById('tm-sec').value) || 0;
-            tmTime = m * 60 + s;
-            if(tmTime <= 0) return;
-            tmInt = setInterval(()=>{
-                tmTime--; updateTmDisp();
-                if(tmTime<=0){ clearInterval(tmInt); tmInt=null; btn.innerText="開始"; alert("レスト終了！"); }
-            },1000);
-            btn.innerText="停止";
-        } else { clearInterval(tmInt); tmInt=null; btn.innerText="開始"; }
-    }
-    function resetTimer() { clearInterval(tmInt); tmInt=null; setTimer(90); document.getElementById('tm-start-btn').innerText="開始"; }
+        // 天気を取得
+        await fetchWeather();
 
-    // 靴の写真プレビューとデータ変換
-    function previewShoe(input) {
-        if (input.files && input.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const preview = document.getElementById('shoe-preview');
-                preview.src = e.target.result;
-                preview.style.display = "block";
-                currentShoeBase64 = e.target.result;
-            }
-            reader.readAsDataURL(input.files[0]);
-        }
-    }
-
-    function saveLog() {
-        const log = {
-            date: new Date().toLocaleDateString('ja-JP'),
+        const diary = {
+            date: document.getElementById('date-input').value,
+            time: document.getElementById('time-input').value,
             dist: parseFloat(document.getElementById('dist-input').value) || 0,
-            menu: document.getElementById('menu-input').value,
-            shoeName: document.getElementById('shoe-name-input').value || "未設定",
-            shoeImg: currentShoeBase64
+            menu: document.getElementById('menu-input').value || "記録なし",
+            temp: weatherData.temp,
+            weather: weatherData.text
         };
-        if(!log.menu) return alert("メニュー名を入力してください");
-        let logs = JSON.parse(localStorage.getItem('runLogs')) || [];
-        logs.unshift(log);
-        localStorage.setItem('runLogs', JSON.stringify(logs));
+
+        if (diary.dist === 0) {
+            alert("距離を入力してください！");
+            btn.innerText = "日誌を保存（天気取得）";
+            btn.disabled = false;
+            return;
+        }
+
+        let diaries = JSON.parse(localStorage.getItem('runDiaries')) || [];
+        diaries.unshift(diary);
+        localStorage.setItem('runDiaries', JSON.stringify(diaries));
+        
         location.reload();
     }
 
-    window.onload = () => {
-        initMap();
-        const logs = JSON.parse(localStorage.getItem('runLogs')) || [];
-        let t=0;
-        logs.forEach(l => {
-            t += l.dist;
+    function loadHistory() {
+        const diaries = JSON.parse(localStorage.getItem('runDiaries')) || [];
+        const list = document.getElementById('history-list');
+
+        diaries.forEach(d => {
             const item = document.createElement('div');
             item.className = 'history-item';
             
-            let shoeHtml = l.shoeImg ? `<img src="${l.shoeImg}" class="history-shoe-img">` : '';
-            
             item.innerHTML = `
-                <div>
-                    <b>${l.date}</b> | ${l.dist.toFixed(2)}km<br>
-                    <span>${l.menu}</span><br>
-                    <small style="color:#666;">👟 ${l.shoeName}</small>
+                <div class="history-header">
+                    <div>
+                        <strong>${d.date.replace(/-/g, '/')}</strong> 
+                        <span class="h-time">${d.time}〜</span>
+                    </div>
+                    <div class="h-weather">${d.weather} ${d.temp}</div>
                 </div>
-                ${shoeHtml}
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>${d.menu}</span>
+                    <span style="font-weight:bold; color:var(--primary);">${d.dist.toFixed(2)} km</span>
+                </div>
             `;
-            document.getElementById('history').appendChild(item);
+            list.appendChild(item);
         });
-        document.getElementById('stat-total').innerText = t.toFixed(1);
     }
+
+    window.onload = loadHistory;
 </script>
+
 </body>
 </html>
