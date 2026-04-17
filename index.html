@@ -3,12 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUN DIARY - Time Tracking</title>
+    <title>RUN DIARY - Monthly Total</title>
     <style>
         :root { --primary: #007AFF; --bg: #f2f2f7; --card: #ffffff; --today: #fff9c4; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; }
         .container { max-width: 600px; margin: 0 auto; }
         
+        /* 月間走行距離の表示エリア */
+        .monthly-stats { background: var(--primary); color: white; padding: 15px; border-radius: 15px; margin-bottom: 10px; text-align: center; box-shadow: 0 4px 10px rgba(0,122,255,0.2); }
+        .monthly-stats-label { font-size: 0.8rem; opacity: 0.9; }
+        .monthly-stats-value { font-size: 1.8rem; font-weight: bold; margin-top: 2px; }
+
         .cal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: white; border-radius: 15px 15px 0 0; }
         .calendar { display: grid; grid-template-columns: repeat(7, 1fr); background: white; border-radius: 0 0 15px 15px; border-top: 1px solid #eee; overflow: hidden; }
         .day-label { text-align: center; font-size: 0.7rem; color: #888; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
@@ -39,6 +44,11 @@
 <body>
 
 <div class="container">
+    <div class="monthly-stats">
+        <div class="monthly-stats-label" id="stats-month-label">月間走行距離</div>
+        <div class="monthly-stats-value"><span id="month-total-val">0.00</span> <small style="font-size: 1rem;">km</small></div>
+    </div>
+
     <div class="cal-header">
         <button onclick="changeMonth(-1)" style="border:none; background:none; font-size:1.2rem;">＜</button>
         <div id="current-month-display" style="font-weight:bold;"></div>
@@ -141,6 +151,7 @@
         const year = currentViewDate.getFullYear();
         const month = currentViewDate.getMonth();
         document.getElementById('current-month-display').innerText = `${year}年 ${month + 1}月`;
+        document.getElementById('stats-month-label').innerText = `${month + 1}月の合計走行距離`;
         
         ['日','月','火','水','木','金','土'].forEach(l => {
             const el = document.createElement('div'); el.className = 'day-label'; el.innerText = l; grid.appendChild(el);
@@ -151,6 +162,8 @@
         const diaries = JSON.parse(localStorage.getItem('runDiaries')) || [];
 
         for (let i = 0; i < firstDay; i++) grid.appendChild(document.createElement('div'));
+
+        let monthlyTotal = 0;
 
         for (let d = 1; d <= lastDate; d++) {
             const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
@@ -164,21 +177,23 @@
                     <span class="cal-dist">${record.dist}k</span>
                     <span style="font-size:0.55rem">${record.weather} ${record.temp}</span>
                 </div>`;
+                // 表示中の月の分だけ距離を合算
+                monthlyTotal += parseFloat(record.dist);
             }
             dayEl.onclick = () => openModal(dateStr);
             grid.appendChild(dayEl);
         }
+        // 合計距離を更新
+        document.getElementById('month-total-val').innerText = monthlyTotal.toFixed(2);
     }
 
     function openModal(dateStr) {
         selectedDateStr = dateStr;
         document.getElementById('modal-date-title').innerText = dateStr.replace(/-/g, '/');
-        // デフォルト時刻設定（1時間前〜現在）
         const now = new Date();
         const hourAgo = new Date(now.getTime() - (60 * 60 * 1000));
         document.getElementById('start-time').value = hourAgo.toTimeString().slice(0,5);
         document.getElementById('end-time').value = now.toTimeString().slice(0,5);
-        
         document.getElementById('entry-modal').style.display = 'block';
         toggleMenuFields();
     }
@@ -211,40 +226,25 @@
         if (isNaN(dist) && menu !== 'その他' && menu !== 'レスト') return alert("走行データを入力してください");
 
         const btn = document.getElementById('save-btn');
-        btn.innerText = "データ取得中...";
-        btn.disabled = true;
+        btn.innerText = "データ取得中..."; btn.disabled = true;
 
         let w = "☁️", t = "--°C";
         try {
             const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
-            // 走行開始時刻に合わせて過去の天気データを取得
             const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current_weather=true&hourly=temperature_2m,weathercode`);
             const data = await res.json();
-            
-            // 入力された開始時間に一番近いインデックスを探す（簡易版）
             const targetHour = parseInt(startTime.split(':')[0]);
             w = "☀️🌤️☁️☁️🌫️☔☔❄️⚡"[Math.min(data.hourly.weathercode[targetHour] || 0, 8)] || "☁️";
             t = Math.round(data.hourly.temperature_2m[targetHour] || data.current_weather.temperature) + "°C";
-        } catch(e) { console.log(e); }
+        } catch(e) {}
 
-        const diary = { 
-            date: selectedDateStr, 
-            startTime: startTime, 
-            endTime: endTime, 
-            menu: menu, 
-            dist: dist.toFixed(2), 
-            detail: detail, 
-            weather: w, 
-            temp: t 
-        };
-
+        const diary = { date: selectedDateStr, startTime: startTime, endTime: endTime, menu: menu, dist: dist.toFixed(2), detail: detail, weather: w, temp: t };
         let diaries = JSON.parse(localStorage.getItem('runDiaries')) || [];
         const idx = diaries.findIndex(d => d.date === selectedDateStr);
         if (idx > -1) diaries[idx] = diary; else diaries.unshift(diary);
         
         localStorage.setItem('runDiaries', JSON.stringify(diaries));
-        btn.innerText = "日誌を保存（天気取得）";
-        btn.disabled = false;
+        btn.innerText = "日誌を保存（天気取得）"; btn.disabled = false;
         closeModal(); renderCalendar();
     }
 
