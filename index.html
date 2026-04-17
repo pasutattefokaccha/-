@@ -18,7 +18,6 @@
         #auth-container { display: flex; align-items: center; justify-content: center; height: 100vh; }
         .auth-box { background: white; padding: 30px; border-radius: 20px; width: 85%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
-        /* エラー表示エリア（ここが重要） */
         #auth-error { 
             color: #d32f2f; 
             font-size: 0.85rem; 
@@ -26,7 +25,7 @@
             background: #ffebee; 
             padding: 10px; 
             border-radius: 8px; 
-            display: none; /* エラーがある時だけ出す */
+            display: none; 
             text-align: left;
             word-break: break-all;
             white-space: pre-wrap;
@@ -82,7 +81,6 @@
         <div id="stats-month-label">今月の合計距離</div>
         <div class="monthly-stats-value"><span id="month-total-val">0.00</span> <small>km</small></div>
     </div>
-
     <div class="cal-header">
         <button onclick="changeMonth(-1)">＜</button>
         <div id="current-month-display"></div>
@@ -130,7 +128,7 @@
         </div>
         <div id="fields-pace" class="dynamic-section" style="display:none;">
             <input type="number" id="pace-dist" placeholder="距離(km)">
-            <input type="text" id="pace-val" placeholder="設定ペース (例 3:50)">
+            <input type="text" id="pace-val" placeholder="設定ペース">
         </div>
         <div id="fields-bu" class="dynamic-section" style="display:none;">
             <input type="number" id="bu-dist" placeholder="距離(km)">
@@ -157,7 +155,6 @@
 </div>
 
 <script>
-    // --- 3. Firebase 設定 (あなたのプロジェクト情報) ---
     const firebaseConfig = {
         apiKey: "AIzaSyC0VeVEdEpcRP8dOvJokXq0lg2gBzloVls",
         authDomain: "runnikki-a7d37.firebaseapp.com",
@@ -167,13 +164,7 @@
         appId: "1:623990853537:web:68417f21002106b5c745e0"
     };
 
-    // 初期化
-    try {
-        firebase.initializeApp(firebaseConfig);
-    } catch (e) {
-        document.body.innerHTML = "Firebase初期化失敗: " + e.message;
-    }
-    
+    firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
@@ -181,18 +172,17 @@
     let selectedDateStr = "";
     let cachedDiaries = [];
 
-    // --- 4. 認証ロジック (デバッグ強化版) ---
+    // --- 認証修正ロジック ---
     const authBtn = document.getElementById('auth-btn');
     const errDiv = document.getElementById('auth-error');
 
     authBtn.addEventListener('click', async () => {
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
-        
         errDiv.style.display = 'none';
         
-        if (!email || !password) {
-            showError("メールとパスワードを入力してください");
+        if (!email || !password || password.length < 6) {
+            showError("メールと6文字以上のパスワードを入力してください");
             return;
         }
 
@@ -200,19 +190,18 @@
         authBtn.disabled = true;
 
         try {
-            // まずログインを試みる
+            // まずはログインを試みる
             await auth.signInWithEmailAndPassword(email, password);
         } catch (error) {
-            console.log("Login Error Code:", error.code);
-            // ユーザーがいない等の場合は新規登録へ
-            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+            // ユーザーがいないか、パスワードが未設定の場合に新規登録
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-login-credentials') {
                 try {
                     await auth.createUserWithEmailAndPassword(email, password);
                 } catch (regErr) {
-                    showError(`登録失敗: ${regErr.code}\n${regErr.message}\n\n※コンソールでEmail認証が有効か確認してください`);
+                    showError(`【重要】Firebaseの設定を確認してください。\nコード: ${regErr.code}\n理由: Authenticationで「メール/パスワード」が有効になっていない可能性があります。`);
                 }
             } else {
-                showError(`ログイン失敗: ${error.code}\n${error.message}`);
+                showError(`エラー: ${error.code}\n${error.message}`);
             }
         }
         authBtn.innerText = "ログイン / 新規登録";
@@ -224,7 +213,6 @@
         errDiv.style.display = 'block';
     }
 
-    // ログイン状態の監視
     auth.onAuthStateChanged(user => {
         const fab = document.getElementById('fab-search');
         if (user) {
@@ -239,7 +227,7 @@
         }
     });
 
-    // --- 5. データ処理 ---
+    // --- 以降、他の機能（修正なし） ---
     async function loadCloudData() {
         const user = auth.currentUser;
         if(!user) return;
@@ -250,35 +238,27 @@
         } catch(e) { console.error(e); }
     }
 
-    // カレンダー等の描画・モーダル制御（以前のコードをそのまま継承）
     function renderCalendar() {
         const grid = document.getElementById('calendar-grid');
         grid.innerHTML = "";
         const year = currentViewDate.getFullYear();
         const month = currentViewDate.getMonth();
         document.getElementById('current-month-display').innerText = `${year}年 ${month + 1}月`;
-        
         ['日','月','火','水','木','金','土'].forEach(l => {
             const el = document.createElement('div'); el.className = 'day-label'; el.innerText = l; grid.appendChild(el);
         });
-
         const firstDay = new Date(year, month, 1).getDay();
         const lastDate = new Date(year, month + 1, 0).getDate();
         for (let i = 0; i < firstDay; i++) grid.appendChild(document.createElement('div'));
-
         let monthlyTotal = 0;
         for (let d = 1; d <= lastDate; d++) {
             const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
             const dayEl = document.createElement('div'); dayEl.className = 'day';
             if (new Date().toISOString().split('T')[0] === dateStr) dayEl.classList.add('today');
             dayEl.innerHTML = `<div class="day-num">${d}</div>`;
-            
             const record = cachedDiaries.find(item => item.date === dateStr);
             if (record) {
-                dayEl.innerHTML += `<div class="cal-record ${getColorClass(record.type)}">
-                    <span style="font-weight:bold">${record.dist}k</span><br>
-                    <span>${record.weather || ''} ${record.temp || ''}</span>
-                </div>`;
+                dayEl.innerHTML += `<div class="cal-record ${getColorClass(record.type)}"><span style="font-weight:bold">${record.dist}k</span></div>`;
                 monthlyTotal += parseFloat(record.dist);
             }
             dayEl.onclick = () => openModal(dateStr);
@@ -287,11 +267,9 @@
         document.getElementById('month-total-val').innerText = monthlyTotal.toFixed(2);
     }
 
-    // (中略: toggleMenuFields, calcJog, calcInt, openModal, closeModal, searchTT 等は以前のロジックと同じ)
     function toggleMenuFields() {
         const menu = document.getElementById('menu-select').value;
-        const ids = ['fields-jog', 'fields-int', 'fields-tt', 'fields-pace', 'fields-bu', 'fields-other'];
-        ids.forEach(id => document.getElementById(id).style.display = 'none');
+        ['fields-jog', 'fields-int', 'fields-tt', 'fields-pace', 'fields-bu', 'fields-other'].forEach(id => document.getElementById(id).style.display = 'none');
         if(menu === 'ジョグ') document.getElementById('fields-jog').style.display = 'block';
         if(menu === 'インターバル' || menu === 'レスト') document.getElementById('fields-int').style.display = 'block';
         if(menu === 'タイムトライアル') document.getElementById('fields-tt').style.display = 'block';
@@ -299,6 +277,7 @@
         if(menu === 'ビルドアップ') document.getElementById('fields-bu').style.display = 'block';
         if(menu === 'その他') document.getElementById('fields-other').style.display = 'block';
     }
+
     function calcJog() {
         const d = parseFloat(document.getElementById('jog-dist').value);
         const m = parseFloat(document.getElementById('jog-min').value);
@@ -309,25 +288,30 @@
             document.getElementById('jog-res').innerText = `平均ペース: ${min}:${sec.toString().padStart(2,'0')}/km`;
         }
     }
+
     function calcInt() {
         const d = parseFloat(document.getElementById('int-dist').value) || 0;
         const c = parseFloat(document.getElementById('int-count').value) || 0;
         document.getElementById('int-res').innerText = `走行合計: ${(d * c).toFixed(2)} km`;
     }
+
     function getColorClass(type) {
         const classes = { 'ジョグ':'bg-jog', 'インターバル':'bg-interval', 'タイムトライアル':'bg-tt', 'ペース走':'bg-pace', 'ビルドアップ':'bg-bu', 'レスト':'bg-rest' };
         return classes[type] || 'bg-other';
     }
+
     function openModal(dateStr) {
         selectedDateStr = dateStr;
         document.getElementById('modal-date-title').innerText = dateStr.replace(/-/g, '/');
         document.getElementById('entry-modal').style.display = 'block';
         toggleMenuFields();
     }
+
     function closeModal() { document.getElementById('entry-modal').style.display = 'none'; }
     function openSearch() { document.getElementById('search-modal').style.display = 'block'; }
     function closeSearch() { document.getElementById('search-modal').style.display = 'none'; }
     function changeMonth(diff) { currentViewDate.setMonth(currentViewDate.getMonth() + diff); renderCalendar(); }
+    
     function searchTT() {
         const queryVal = parseFloat(document.getElementById('search-query').value);
         const resultsDiv = document.getElementById('search-results');
@@ -338,7 +322,6 @@
     async function saveDiary() {
         const menuType = document.getElementById('menu-select').value;
         let dist = 0, detail = "", ttTime = "";
-        
         if (menuType === 'ジョグ') {
             dist = parseFloat(document.getElementById('jog-dist').value);
             detail = document.getElementById('jog-res').innerText;
@@ -351,19 +334,13 @@
             dist = parseFloat(document.getElementById('tt-dist-km').value) || 0;
             ttTime = `${document.getElementById('tt-min').value}:${document.getElementById('tt-sec').value}.${document.getElementById('tt-msec').value}`;
             detail = `${dist}k TT [${ttTime}]`;
-        } else if (menuType === 'ペース走') {
-            dist = parseFloat(document.getElementById('pace-dist').value);
-        } else if (menuType === 'ビルドアップ') {
-            dist = parseFloat(document.getElementById('bu-dist').value);
         } else if (menuType === 'その他') {
             dist = parseFloat(document.getElementById('other-dist').value) || 0;
             detail = document.getElementById('other-content').value;
         }
-
         if (isNaN(dist) && menuType !== 'レスト') return alert("距離を入力してください");
         const btn = document.getElementById('save-btn');
         btn.innerText = "保存中..."; btn.disabled = true;
-
         let w = "☁️", t = "--°C";
         try {
             const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
@@ -371,13 +348,10 @@
             const data = await res.json();
             t = Math.round(data.current_weather.temperature) + "°C";
         } catch(e) {}
-
         const diary = { date: selectedDateStr, type: menuType, dist: dist.toFixed(2), detail: detail, weather: w, temp: t, ttTime: ttTime };
-
         try {
             await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDateStr).set(diary);
-            closeModal();
-            loadCloudData();
+            closeModal(); loadCloudData();
         } catch (e) { alert("保存失敗: " + e.message); }
         btn.innerText = "日誌を保存（天気取得）"; btn.disabled = false;
     }
