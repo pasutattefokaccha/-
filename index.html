@@ -39,7 +39,8 @@
         .bg-rest { background-color: #eeeeee; color: #616161; }
         .bg-other { background-color: #e0f7fa; color: #00838f; }
 
-        .search-fab { position: fixed; right: 20px; bottom: 20px; width: 60px; height: 60px; background: var(--primary); color: white; border-radius: 30px; display: flex; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; border: none; z-index: 90; }
+        /* 虫眼鏡：初期は非表示 */
+        .search-fab { position: fixed; right: 20px; bottom: 20px; width: 60px; height: 60px; background: var(--primary); color: white; border-radius: 30px; display: none; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; border: none; z-index: 90; }
 
         #entry-modal, #search-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; overflow-y: auto; }
         .modal-content { background: white; margin: 5% auto; width: 90%; max-width: 450px; padding: 20px; border-radius: 20px; }
@@ -65,7 +66,7 @@
         <input type="email" id="email" placeholder="メールアドレス">
         <input type="password" id="password" placeholder="パスワード(6文字以上)">
         <button id="auth-btn" class="btn btn-save">ログイン / 新規登録</button>
-        <p id="auth-error" style="color:red; font-size:0.8rem; margin-top:10px;"></p>
+        <p id="auth-error" style="color:red; font-size:0.8rem; margin-top:10px; white-space: pre-wrap;"></p>
     </div>
 </div>
 
@@ -81,7 +82,7 @@
         <button onclick="changeMonth(1)" style="border:none; background:none; font-size:1.2rem;">＞</button>
     </div>
     <div class="calendar" id="calendar-grid"></div>
-    <button onclick="auth.signOut()" style="width:100%; margin-top:20px; border:none; background:none; color:#999; font-size:0.7rem;">ログアウト</button>
+    <button id="logout-btn" style="width:100%; margin-top:20px; border:none; background:none; color:#999; font-size:0.7rem;">ログアウト</button>
 </div>
 
 <button class="search-fab" id="fab-search" onclick="openSearch()">🔍</button>
@@ -101,7 +102,6 @@
             <option value="レスト">レスト</option>
             <option value="その他">その他</option>
         </select>
-        
         <div id="fields-jog" class="dynamic-section">
             <div style="display:flex; gap:10px;">
                 <div><label>距離(km)</label><input type="number" id="jog-dist" step="0.01" oninput="calcJog()"></div>
@@ -109,7 +109,6 @@
             </div>
             <div id="jog-res" class="result-box">平均ペース: --:--/km</div>
         </div>
-        
         <div id="fields-int" class="dynamic-section" style="display:none;">
             <div style="display:flex; gap:10px;">
                 <div><label>1本の距離(km)</label><input type="number" id="int-dist" step="0.01" oninput="calcInt()"></div>
@@ -118,7 +117,6 @@
             <label>つなぎの内容</label><input type="text" id="int-rest" placeholder="200mジョグなど">
             <div id="int-res" class="result-box">走行合計: 0.00 km</div>
         </div>
-        
         <div id="fields-tt" class="dynamic-section" style="display:none;">
             <label>設定距離(km)</label><input type="number" id="tt-dist-km" step="0.01">
             <label>タイム</label>
@@ -128,7 +126,6 @@
                 <input type="number" id="tt-msec" placeholder="0" max="9"><span>秒</span>
             </div>
         </div>
-
         <div id="fields-pace" class="dynamic-section" style="display:none;">
             <label>走行距離(km)</label><input type="number" id="pace-dist" step="0.1"><label>設定ペース(/km)</label><input type="text" id="pace-val" placeholder="3:50">
         </div>
@@ -142,7 +139,6 @@
         <div id="fields-other" class="dynamic-section" style="display:none;">
             <label>走行距離(km)</label><input type="number" id="other-dist" step="0.01"><label>メニュー名</label><input type="text" id="other-menu-name"><label>内容</label><textarea id="other-content" style="height:60px;"></textarea>
         </div>
-        
         <button class="btn btn-save" id="save-btn" onclick="saveDiary()">日誌を保存（天気取得）</button>
         <button class="btn btn-cancel" onclick="closeModal()">キャンセル</button>
     </div>
@@ -159,7 +155,6 @@
 </div>
 
 <script>
-    // --- Firebase設定 ---
     const firebaseConfig = {
         apiKey: "AIzaSyC0VeVEdEpcRP8dOvJokXq0lg2gBzloVls",
         authDomain: "runnikki-a7d37.firebaseapp.com",
@@ -177,58 +172,60 @@
     let selectedDateStr = "";
     let cachedDiaries = [];
 
-    // --- 認証管理 (判定ロジック入り) ---
-    document.getElementById('auth-btn').onclick = async () => {
+    // --- 認証管理 (エラーコード表示追加) ---
+    const authBtn = document.getElementById('auth-btn');
+    const authError = document.getElementById('auth-error');
+
+    authBtn.addEventListener('click', async () => {
         const e = document.getElementById('email').value.trim();
         const p = document.getElementById('password').value;
-        const err = document.getElementById('auth-error');
         
-        if (!e) { err.innerText = "メールアドレスを入力してください"; return; }
-        if (!p) { err.innerText = "パスワードを入力してください"; return; }
-        if (p.length < 6) { err.innerText = "パスワードは6文字以上で入力してください"; return; }
+        if (!e) { authError.innerText = "メールアドレスを入力してください"; return; }
+        if (!p) { authError.innerText = "パスワードを入力してください"; return; }
+        if (p.length < 6) { authError.innerText = "パスワードは6文字以上です"; return; }
 
-        err.innerText = "通信中...";
+        authError.innerText = "通信中...";
         try {
             await auth.signInWithEmailAndPassword(e, p);
         } catch (error) {
-            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-login-credentials' || error.code === 'auth/invalid-credential') {
+            console.error("Auth Error:", error);
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code.includes('credential')) {
                 try {
                     await auth.createUserWithEmailAndPassword(e, p);
                 } catch (regErr) {
-                    if (regErr.code === 'auth/email-already-in-use') {
-                        err.innerText = "パスワードが違うか、既に登録されています";
-                    } else {
-                        err.innerText = "エラー: " + regErr.message;
-                    }
+                    authError.innerText = `コード: ${regErr.code}\nメッセージ: ${regErr.message}`;
                 }
             } else {
-                err.innerText = "ログインエラー: " + error.message;
+                authError.innerText = `コード: ${error.code}\nメッセージ: ${error.message}`;
             }
         }
-    };
+    });
 
     auth.onAuthStateChanged(user => {
+        const fab = document.getElementById('fab-search');
         if (user) {
             document.getElementById('auth-container').classList.add('hidden');
             document.getElementById('app-container').classList.remove('hidden');
-            document.getElementById('fab-search').classList.remove('hidden');
+            fab.style.display = 'flex'; // ログイン時のみ表示
             loadCloudData();
         } else {
             document.getElementById('auth-container').classList.remove('hidden');
             document.getElementById('app-container').classList.add('hidden');
-            document.getElementById('fab-search').classList.add('hidden');
+            fab.style.display = 'none'; // 未ログインは非表示
         }
     });
 
     async function loadCloudData() {
         const user = auth.currentUser;
         if(!user) return;
-        const snap = await db.collection('users').doc(user.uid).collection('diaries').get();
-        cachedDiaries = snap.docs.map(doc => doc.data());
-        renderCalendar();
+        try {
+            const snap = await db.collection('users').doc(user.uid).collection('diaries').get();
+            cachedDiaries = snap.docs.map(doc => doc.data());
+            renderCalendar();
+        } catch(e) { console.error("Load Error:", e); }
     }
 
-    // --- UI制御 ---
+    // --- UI/カレンダー/保存 (以前のロジック維持) ---
     function toggleMenuFields() {
         const menu = document.getElementById('menu-select').value;
         ['fields-jog', 'fields-int', 'fields-tt', 'fields-pace', 'fields-bu', 'fields-other'].forEach(id => document.getElementById(id).style.display = 'none');
@@ -269,22 +266,18 @@
         const month = currentViewDate.getMonth();
         document.getElementById('current-month-display').innerText = `${year}年 ${month + 1}月`;
         document.getElementById('stats-month-label').innerText = `${month + 1}月の合計走行距離`;
-        
         ['日','月','火','水','木','金','土'].forEach(l => {
             const el = document.createElement('div'); el.className = 'day-label'; el.innerText = l; grid.appendChild(el);
         });
-
         const firstDay = new Date(year, month, 1).getDay();
         const lastDate = new Date(year, month + 1, 0).getDate();
         for (let i = 0; i < firstDay; i++) grid.appendChild(document.createElement('div'));
-
         let monthlyTotal = 0;
         for (let d = 1; d <= lastDate; d++) {
             const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
             const dayEl = document.createElement('div'); dayEl.className = 'day';
             if (new Date().toISOString().split('T')[0] === dateStr) dayEl.classList.add('today');
             dayEl.innerHTML = `<div class="day-num">${d}</div>`;
-            
             const record = cachedDiaries.find(item => item.date === dateStr);
             if (record) {
                 dayEl.innerHTML += `<div class="cal-record ${getColorClass(record.type)}">
@@ -330,7 +323,6 @@
         const menuType = document.getElementById('menu-select').value;
         const startTime = document.getElementById('start-time').value;
         let dist = 0, detail = "", finalMenuName = menuType, ttTime = "";
-
         if (menuType === 'ジョグ') {
             dist = parseFloat(document.getElementById('jog-dist').value);
             detail = document.getElementById('jog-res').innerText;
@@ -354,5 +346,4 @@
             finalMenuName = document.getElementById('other-menu-name').value || "その他";
             detail = document.getElementById('other-content').value;
         }
-
-        if (isNaN(dist) && menuType !== 'レスト') 
+        if (isNaN(dist
