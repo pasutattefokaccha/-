@@ -3,56 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUN LOG - Pro</title>
+    <title>RUN LOG - GPS Pro</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        :root { --primary: #007AFF; --jog: #28a745; --int: #ff9500; --rest: #5856d6; --bg: #f2f2f7; }
+        :root { --primary: #007AFF; --jog: #34A853; --int: #FBBC05; --rest: #4285F4; --bg: #f8f9fa; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 50px; }
         .container { max-width: 500px; margin: 0 auto; padding: 15px; }
         
-        /* モード切替タブ */
-        .mode-selector { display: flex; background: #ddd; border-radius: 10px; padding: 3px; margin-bottom: 15px; }
-        .mode-btn { flex: 1; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; background: transparent; transition: 0.3s; }
+        /* 統計カード */
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+        .stat-box { background: white; padding: 10px; border-radius: 12px; text-align: center; border-bottom: 4px solid var(--primary); }
+        .stat-box div { font-size: 0.7rem; color: #666; }
+        .stat-box b { font-size: 1.1rem; color: var(--primary); }
+
+        /* モード切替 */
+        .mode-selector { display: flex; background: #e0e0e0; border-radius: 12px; padding: 4px; margin-bottom: 15px; }
+        .mode-btn { flex: 1; border: none; padding: 10px; border-radius: 9px; font-weight: bold; background: transparent; }
         .mode-btn.active { background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
-        .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        .mode-content { display: none; }
-        .mode-content.active { display: block; }
+        /* マップエリア */
+        #map { height: 350px; width: 100%; border-radius: 15px; margin-bottom: 15px; border: 2px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        
+        /* Googleマップ風の現在地マーカー（CSSで作成） */
+        .current-location-icon {
+            background: #4285F4;
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 10px rgba(66, 133, 244, 0.6);
+        }
+        .current-location-icon::after {
+            content: "";
+            display: block;
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            background: rgba(66, 133, 244, 0.4);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+        }
 
-        /* デザイン要素 */
-        #map { height: 250px; width: 100%; border-radius: 12px; margin-bottom: 10px; }
-        .timer-display { font-size: 3rem; text-align: center; font-weight: bold; font-family: monospace; margin: 10px 0; }
-        .btn-action { width: 100%; padding: 15px; border-radius: 30px; border: none; color: white; font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; }
+        .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .timer-display { font-size: 3.5rem; text-align: center; font-weight: bold; font-family: monospace; margin: 10px 0; }
+        .btn-action { width: 100%; padding: 16px; border-radius: 30px; border: none; color: white; font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
         
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
-        .stat-box { background: var(--primary); color: white; padding: 8px; border-radius: 10px; text-align: center; font-size: 0.8rem; }
-        
-        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        .save-area { border-top: 2px dashed #ddd; pt: 15px; }
+        input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
+        .history-item { background: white; padding: 12px; border-radius: 10px; margin-bottom: 8px; border-left: 5px solid var(--primary); }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="stats-grid">
-        <div class="stat-box">週 <b id="stat-week">0.0</b></div>
-        <div class="stat-box">月 <b id="stat-month">0.0</b></div>
-        <div class="stat-box">累計 <b id="stat-total">0.0</b></div>
+        <div class="stat-box"><div>週</div><b id="stat-week">0.0</b></div>
+        <div class="stat-box"><div>月</div><b id="stat-month">0.0</b></div>
+        <div class="stat-box"><div>累計</div><b id="stat-total">0.0</b></div>
     </div>
 
     <div class="mode-selector">
-        <button class="mode-btn active" onclick="switchMode('jog')">ジョグ</button>
-        <button class="mode-btn" onclick="switchMode('interval')">インターバル</button>
-        <button class="mode-btn" onclick="switchMode('rest')">レスト</button>
+        <button id="btn-jog" class="mode-btn active" onclick="switchMode('jog')">ジョグ</button>
+        <button id="btn-interval" class="mode-btn" onclick="switchMode('interval')">計測</button>
+        <button id="btn-rest" class="mode-btn" onclick="switchMode('rest')">レスト</button>
     </div>
 
-    <div id="mode-jog" class="mode-content active">
+    <div id="mode-jog" class="active" style="display: block;">
         <div id="map"></div>
-        <button id="gpsBtn" class="btn-action" style="background: var(--jog);" onclick="toggleGPS()">GPS開始</button>
+        <button id="gpsBtn" class="btn-action" style="background: var(--jog);" onclick="toggleGPS()">GPS計測開始</button>
     </div>
 
-    <div id="mode-interval" class="mode-content">
+    <div id="mode-interval" style="display: none;">
         <div class="card">
             <div class="timer-display" id="sw-display">00:00.00</div>
             <button class="btn-action" style="background: var(--int);" onclick="toggleStopwatch()" id="sw-btn">START</button>
@@ -60,20 +82,22 @@
         </div>
     </div>
 
-    <div id="mode-rest" class="mode-content">
+    <div id="mode-rest" style="display: none;">
         <div class="card">
             <div class="timer-display" id="tm-display">01:30</div>
-            <div style="display:flex; gap:10px;">
-                <button class="btn-action" style="background: var(--rest);" onclick="startTimer()">開始</button>
-                <button class="btn-action" style="background: #888;" onclick="resetTimer()">90秒に戻す</button>
+            <div style="display:flex; gap:5px; margin-bottom:15px; justify-content:center;">
+                <button onclick="setTimer(60)" style="padding:8px; border-radius:10px; border:1px solid #ddd;">60s</button>
+                <button onclick="setTimer(90)" style="padding:8px; border-radius:10px; border:1px solid #ddd;">90s</button>
+                <button onclick="setTimer(120)" style="padding:8px; border-radius:10px; border:1px solid #ddd;">120s</button>
             </div>
+            <button id="tm-start-btn" class="btn-action" style="background: var(--rest);" onclick="toggleTimer()">開始</button>
         </div>
     </div>
 
-    <div class="card save-area">
-        <label>距離(km)</label>
-        <input type="number" id="dist-input" step="0.01" placeholder="GPS停止で自動入力">
-        <input type="text" id="menu-input" placeholder="メニュー内容">
+    <div class="card">
+        <label style="font-size:0.8rem; color:#666;">今回の距離(km)</label>
+        <input type="number" id="dist-input" step="0.01" placeholder="0.00">
+        <input type="text" id="menu-input" placeholder="練習メニュー">
         <select id="shoe-input">
             <option>練習用シューズ</option>
             <option>厚底レーシング</option>
@@ -86,23 +110,36 @@
 </div>
 
 <script>
-    // モード切替
-    function switchMode(mode) {
-        document.querySelectorAll('.mode-content').forEach(c => c.classList.remove('active'));
-        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('mode-' + mode).classList.add('active');
-        event.target.classList.add('active');
-        if(mode === 'jog') setTimeout(() => map.invalidateSize(), 100);
-    }
+    let map, pathLine, userMarker, watchId = null, totalDist = 0;
 
-    // --- GPS / MAP ---
-    let map, pathLine, watchId = null, totalDist = 0;
+    // 地図の初期化
     function initMap() {
-        map = L.map('map').setView([35.68, 139.76], 15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        pathLine = L.polyline([], {color: '#28a745', weight: 6}).addTo(map);
+        // デザインをGoogleマップ風のスッキリしたものに変更
+        map = L.map('map').setView([35.681, 139.767], 15);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/voyager_all/{z}/{x}/{y}{r}.png').addTo(map);
+        
+        pathLine = L.polyline([], {color: '#4285F4', weight: 6, opacity: 0.8}).addTo(map);
+        
+        // 現在地を示すカスタムアイコン
+        const curIcon = L.divIcon({className: 'current-location-icon', iconSize: [12, 12]});
+        userMarker = L.marker([35.681, 139.767], {icon: curIcon}).addTo(map);
+
+        // 起動時に一回現在地へジャンプ
+        navigator.geolocation.getCurrentPosition(pos => {
+            const p = [pos.coords.latitude, pos.coords.longitude];
+            map.setView(p, 16);
+            userMarker.setLatLng(p);
+        });
     }
     initMap();
+
+    function switchMode(mode) {
+        ['jog', 'interval', 'rest'].forEach(m => {
+            document.getElementById('mode-'+m).style.display = (m === mode) ? 'block' : 'none';
+            document.getElementById('btn-'+m).classList.toggle('active', m === mode);
+        });
+        if(mode === 'jog') setTimeout(() => map.invalidateSize(), 200);
+    }
 
     function toggleGPS() {
         const btn = document.getElementById('gpsBtn');
@@ -110,56 +147,51 @@
             totalDist = 0; pathLine.setLatLngs([]);
             watchId = navigator.geolocation.watchPosition(pos => {
                 const p = [pos.coords.latitude, pos.coords.longitude];
+                userMarker.setLatLng(p);
                 if(pathLine.getLatLngs().length > 0) {
                     const last = pathLine.getLatLngs()[pathLine.getLatLngs().length-1];
                     totalDist += map.distance(last, p) / 1000;
                     document.getElementById('dist-input').value = totalDist.toFixed(2);
                 }
-                pathLine.addLatLng(p); map.panTo(p);
+                pathLine.addLatLng(p);
+                map.panTo(p);
             }, null, {enableHighAccuracy:true});
-            btn.innerText = "GPS停止"; btn.style.background = "#dc3545";
+            btn.innerText = "計測停止"; btn.style.background = "#EA4335";
         } else {
             navigator.geolocation.clearWatch(watchId); watchId = null;
-            btn.innerText = "GPS開始"; btn.style.background = "var(--jog)";
+            btn.innerText = "GPS計測開始"; btn.style.background = var(--jog);
         }
     }
 
-    // --- ストップウォッチ ---
-    let swTime = 0, swInterval = null;
-    function toggleStopwatch() {
-        const btn = document.getElementById('sw-btn');
-        if(!swInterval) {
-            let start = Date.now() - swTime;
-            swInterval = setInterval(() => {
-                swTime = Date.now() - start;
-                updateSWDisplay();
-            }, 10);
-            btn.innerText = "STOP";
-        } else {
-            clearInterval(swInterval); swInterval = null;
-            btn.innerText = "START";
-        }
+    // ストップウォッチとタイマーの簡易ロジック（前回の内容を維持）
+    let swTime=0, swInt=null;
+    function toggleStopwatch(){
+        const b = document.getElementById('sw-btn');
+        if(!swInt){
+            let s = Date.now()-swTime;
+            swInt = setInterval(()=>{
+                swTime = Date.now()-s;
+                const ms = Math.floor((swTime%1000)/10), sec = Math.floor((swTime/1000)%60), min = Math.floor(swTime/60000);
+                document.getElementById('sw-display').innerText = `${min.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}.${ms.toString().padStart(2,'0')}`;
+            },10);
+            b.innerText="STOP";
+        } else { clearInterval(swInt); swInt=null; b.innerText="START"; }
     }
-    function updateSWDisplay() {
-        const ms = Math.floor((swTime%1000)/10), s = Math.floor((swTime/1000)%60), m = Math.floor(swTime/60000);
-        document.getElementById('sw-display').innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}.${ms.toString().padStart(2,'0')}`;
-    }
-    function resetStopwatch() { swTime = 0; updateSWDisplay(); }
+    function resetStopwatch(){ swTime=0; document.getElementById('sw-display').innerText="00:00.00"; }
 
-    // --- タイマー ---
-    let tmTime = 90, tmInterval = null;
-    function startTimer() {
-        if(tmInterval) return;
-        tmInterval = setInterval(() => {
-            tmTime--;
-            const m = Math.floor(tmTime/60), s = tmTime%60;
-            document.getElementById('tm-display').innerText = `${m}:${s.toString().padStart(2,'0')}`;
-            if(tmTime <= 0) { clearInterval(tmInterval); tmInterval = null; alert("休憩終了！"); }
-        }, 1000);
+    let tmTime=90, tmInt=null;
+    function setTimer(s){ tmTime=s; updateTmDisp(); }
+    function updateTmDisp(){ document.getElementById('tm-display').innerText = `${Math.floor(tmTime/60)}:${(tmTime%60).toString().padStart(2,'0')}`; }
+    function toggleTimer(){
+        if(!tmInt){
+            tmInt = setInterval(()=>{
+                tmTime--; updateTmDisp();
+                if(tmTime<=0){ clearInterval(tmInt); tmInt=null; alert("レスト終了！"); }
+            },1000);
+            document.getElementById('tm-start-btn').innerText="停止";
+        } else { clearInterval(tmInt); tmInt=null; document.getElementById('tm-start-btn').innerText="開始"; }
     }
-    function resetTimer() { clearInterval(tmInterval); tmInterval = null; tmTime = 90; document.getElementById('tm-display').innerText = "01:30"; }
 
-    // --- 保存 ---
     function saveLog() {
         const log = {
             date: new Date().toLocaleDateString('ja-JP'),
@@ -167,7 +199,6 @@
             menu: document.getElementById('menu-input').value,
             shoe: document.getElementById('shoe-input').value
         };
-        if(!log.menu) return alert("メニューを入力してね");
         let logs = JSON.parse(localStorage.getItem('runLogs')) || [];
         logs.unshift(log);
         localStorage.setItem('runLogs', JSON.stringify(logs));
@@ -176,12 +207,12 @@
 
     window.onload = () => {
         const logs = JSON.parse(localStorage.getItem('runLogs')) || [];
-        let w=0, m=0, t=0;
+        let t=0;
         logs.forEach(l => {
             t += l.dist;
             const item = document.createElement('div');
-            item.className = 'card';
-            item.innerHTML = `<b>${l.date}</b><br>${l.menu}<br>${l.dist}km (${l.shoe})`;
+            item.className = 'history-item';
+            item.innerHTML = `<b>${l.date}</b> | ${l.dist.toFixed(2)}km<br>${l.menu} (${l.shoe})`;
             document.getElementById('history').appendChild(item);
         });
         document.getElementById('stat-total').innerText = t.toFixed(1);
