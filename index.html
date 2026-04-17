@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PRO RUN DIARY</title>
+    <title>PRO RUN DIARY - Update</title>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-firestore-compat.js"></script>
@@ -11,26 +11,37 @@
         :root { --primary: #007AFF; --bg: #f2f2f7; --today: #fff9c4; --success: #2ecc71; --accent: #f9a825; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; font-size: 14px; }
         .container { max-width: 600px; margin: 0 auto; padding-bottom: 80px; }
+        
         #auth-container { display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; }
-        .auth-box { background: white; padding: 30px; border-radius: 20px; width: 85%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        .monthly-header { background: var(--primary); color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 10px; }
-        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); background: white; border-radius: 15px; overflow: hidden; }
-        .day { min-height: 95px; padding: 5px; border: 0.5px solid #f0f0f0; cursor: pointer; position: relative; }
-        .day-num { font-size: 0.8rem; font-weight: bold; }
-        .is-today { background-color: var(--today) !important; border: 2px solid var(--accent) !important; }
-        .cal-record { font-size: 0.65rem; padding: 3px; border-radius: 4px; margin-top: 2px; border-left: 3px solid #ccc; }
+        .auth-box { background: white; padding: 30px; border-radius: 20px; width: 85%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        
+        .monthly-header { background: var(--primary); color: white; padding: 15px; border-radius: 15px; text-align: center; margin-bottom: 10px; }
+        .monthly-total { font-size: 2.2rem; font-weight: bold; line-height: 1.1; }
+        
+        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .day-label { text-align: center; font-size: 0.7rem; color: #888; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .day { min-height: 75px; padding: 4px; border-right: 1px solid #f9f9f9; border-bottom: 1px solid #f9f9f9; cursor: pointer; position: relative; display: flex; flex-direction: column; }
+        .day-num { font-size: 0.8rem; font-weight: bold; margin-bottom: 2px; }
+        .is-today { background-color: var(--today) !important; border: 2px solid var(--accent) !important; z-index: 1; }
+        
+        .cal-record { font-size: 0.65rem; padding: 3px; border-radius: 4px; margin-top: 2px; border-left: 3px solid #ccc; line-height: 1.3; }
         .bg-jog { background: #e3f2fd; color: #1565c0; border-left-color: #1565c0; }
         .bg-int { background: #ffebee; color: #c62828; border-left-color: #c62828; }
         .bg-tt { background: #fffde7; color: #f9a825; border-left-color: #f9a825; }
         .bg-pace { background: #f1f8e9; color: #2e7d32; border-left-color: #2e7d32; }
         .bg-bu { background: #f3e5f5; color: #7b1fa2; border-left-color: #7b1fa2; }
+        
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; overflow-y: auto; }
         .modal-content { background: white; margin: 5% auto; width: 92%; max-width: 480px; padding: 20px; border-radius: 20px; box-sizing: border-box; }
+        
         input, select, textarea { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 1rem; }
-        .btn { width: 100%; padding: 15px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn { width: 100%; padding: 15px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 1rem;}
         .btn-save { background: var(--success); color: white; }
+        .hidden { display: none !important; }
+        
         .dynamic-section { background: #f8f9fa; padding: 12px; border-radius: 12px; border-left: 4px solid var(--primary); margin: 8px 0; }
         .res-preview { color: var(--primary); font-weight: bold; font-size: 0.9rem; margin-top: 5px; }
+        
         .fab { position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: var(--accent); color: white; border-radius: 30px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; z-index: 90; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.8rem; }
         th, td { border-bottom: 1px solid #eee; padding: 10px 5px; text-align: left; }
@@ -45,24 +56,39 @@
         <input type="password" id="password" placeholder="パスワード">
         <button onclick="handleLogin()" class="btn" style="background:var(--primary); color:white;">ログイン</button>
         <button onclick="handleSignup()" class="btn" style="background:#5856d6; color:white;">新規登録</button>
+        <p id="auth-error" style="color:red; font-size:0.8rem; margin-top:10px;"></p>
     </div>
 </div>
 
 <div id="app-container" class="container hidden">
     <div class="monthly-header">
-        <div id="month-label">2026年 4月</div>
-        <div style="font-size: 2.2rem; font-weight: bold;"><span id="month-total-val">0.00</span> <small style="font-size: 1rem;">km</small></div>
+        <div id="month-label" style="font-size:0.9rem; margin-bottom:5px;"></div>
+        <div class="monthly-total"><span id="month-total-val">0.00</span> <small style="font-size: 1rem;">km</small></div>
     </div>
     <div class="calendar" id="calendar-grid"></div>
+    <button onclick="auth.signOut()" class="btn" style="background:none; color:#999; font-size:0.8rem;">ログアウト</button>
     <button class="fab" onclick="openSearch()">🔍</button>
 </div>
 
 <div id="entry-modal" class="modal">
     <div class="modal-content">
-        <h3 id="modal-date-title"></h3>
-        <div style="display:flex; gap:10px;">
+        <h3 id="modal-date-title" style="margin-top:0;"></h3>
+        
+        <label style="font-size:0.8rem; color:#666;">練習時間帯</label>
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
             <input type="time" id="start-time" value="17:00"><span>〜</span><input type="time" id="end-time" value="18:00">
         </div>
+
+        <div style="background:#f0f4f8; padding:12px; border-radius:10px; margin-bottom:10px;">
+            <label style="font-size:0.85rem; font-weight:bold; color:#333;">📍 天気・気温の取得場所</label>
+            <div style="display:flex; gap:15px; margin-top:8px; font-size:0.9rem;">
+                <label><input type="radio" name="loc-type" value="gps" checked onchange="toggleLoc()"> 現在地 (GPS)</label>
+                <label><input type="radio" name="loc-type" value="manual" onchange="toggleLoc()"> 手動入力</label>
+            </div>
+            <input type="text" id="loc-manual-input" placeholder="市区町村名 (例: 西東京市)" style="display:none; margin-top:10px; border-color:#ccc;">
+        </div>
+
+        <label style="font-size:0.8rem; color:#666;">メニュー選択</label>
         <select id="menu-select" onchange="switchFields()">
             <option value="ジョグ">ジョグ</option>
             <option value="インターバル">インターバル</option>
@@ -87,7 +113,7 @@
             <input type="number" id="tt-dist" placeholder="距離 (km)">
             <div style="display:flex; gap:5px; align-items:center;">
                 <input type="number" id="tt-min" placeholder="分"><span>:</span>
-                <input type="number" id="tt-sec" placeholder="秒"><span>.</span>
+                <input type="number" id="tt-sec" placeholder="秒" max="59"><span>.</span>
                 <input type="number" id="tt-msec" placeholder="0" max="9">
             </div>
         </div>
@@ -98,16 +124,16 @@
         </div>
         <div id="sect-bu" class="menu-sect dynamic-section" style="display:none;">
             <input type="number" id="bu-dist" placeholder="距離 (km)">
-            <input type="text" id="bu-min-pace" placeholder="最小(開始)ペース">
-            <input type="text" id="bu-max-pace" placeholder="最大(終了)ペース">
+            <input type="text" id="bu-min-pace" placeholder="開始ペース (最小)">
+            <input type="text" id="bu-max-pace" placeholder="終了ペース (最大)">
         </div>
         <div id="sect-other" class="menu-sect dynamic-section" style="display:none;">
             <input type="number" id="other-dist" placeholder="距離 (km)">
             <textarea id="other-memo" placeholder="自由記述の内容"></textarea>
         </div>
 
-        <button class="btn btn-save" id="save-btn" onclick="saveDiary()">保存（位置・天気を同期）</button>
-        <button class="btn" style="background:#eee;" onclick="closeModal()">キャンセル</button>
+        <button class="btn btn-save" id="save-btn" onclick="saveDiary()">保存 (天気を自動取得)</button>
+        <button class="btn" style="background:#eee; color:#333;" onclick="closeModal()">キャンセル</button>
     </div>
 </div>
 
@@ -116,14 +142,18 @@
         <h3>記録検索（タイムトライアル）</h3>
         <input type="number" id="search-dist" placeholder="距離(km)で絞り込み">
         <button class="btn" style="background:var(--accent); color:white;" onclick="runSearch()">検索実行</button>
-        <div id="search-results-table">
-            <table><thead><tr><th>日付</th><th>距離</th><th>タイム</th><th>天気</th></tr></thead><tbody id="search-body"></tbody></table>
+        <div style="max-height: 300px; overflow-y: auto;">
+            <table id="search-results-table">
+                <thead><tr><th>日付</th><th>距離</th><th>タイム</th><th>天気</th></tr></thead>
+                <tbody id="search-body"></tbody>
+            </table>
         </div>
         <button class="btn" style="background:#eee; margin-top:20px;" onclick="closeSearch()">閉じる</button>
     </div>
 </div>
 
 <script>
+    // Firebase設定
     const firebaseConfig = {
         apiKey: "AIzaSyC0VeVEdEpcRP8dOvJokXq0lg2gBzloVls",
         authDomain: "runnikki-a7d37.firebaseapp.com",
@@ -139,40 +169,7 @@
     let cachedDiaries = [];
     let selectedDate = "";
 
-    function switchFields() {
-        const menu = document.getElementById('menu-select').value;
-        document.querySelectorAll('.menu-sect').forEach(s => s.style.display = 'none');
-        const map = {'ジョグ':'sect-jog','インターバル':'sect-int','タイムトライアル':'sect-tt','ペース走':'sect-pace','ビルドアップ':'sect-bu','その他':'sect-other'};
-        if(map[menu]) document.getElementById(map[menu]).style.display = 'block';
-    }
-
-    // 計算ロジック
-    function calcJog() {
-        const d = parseFloat(document.getElementById('jog-dist').value);
-        const m = parseFloat(document.getElementById('jog-min').value);
-        if(d && m) {
-            const s = (m * 60) / d;
-            document.getElementById('jog-res').innerText = `平均ペース: ${Math.floor(s/60)}:${Math.round(s%60).toString().padStart(2,'0')}/km`;
-        }
-    }
-    function calcPaceTime() {
-        const d = parseFloat(document.getElementById('pace-dist').value);
-        const pStr = document.getElementById('pace-val').value;
-        if(d && pStr.includes(':')) {
-            const [m, s] = pStr.split(':').map(Number);
-            const totalSec = (m * 60 + s) * d;
-            document.getElementById('pace-res').innerText = `予想タイム: ${Math.floor(totalSec/60)}分${Math.round(totalSec%60)}秒`;
-        }
-    }
-
-    // Firebase認証
-    async function handleLogin() {
-        try { await auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value); } catch(e) { alert(e.message); }
-    }
-    async function handleSignup() {
-        try { await auth.createUserWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value); } catch(e) { alert(e.message); }
-    }
-
+    // 認証監視 (未ログイン時はカレンダーを完全シャットアウト)
     auth.onAuthStateChanged(user => {
         if (user) {
             document.getElementById('auth-container').classList.add('hidden');
@@ -184,7 +181,20 @@
         }
     });
 
+    async function handleLogin() {
+        try { 
+            await auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value); 
+        } catch(e) { document.getElementById('auth-error').innerText = "ログイン失敗: " + e.message; }
+    }
+    async function handleSignup() {
+        try { 
+            await auth.createUserWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value); 
+        } catch(e) { document.getElementById('auth-error').innerText = "登録失敗: " + e.message; }
+    }
+
+    // カレンダー描画
     async function loadData() {
+        if(!auth.currentUser) return;
         const snap = await db.collection('users').doc(auth.currentUser.uid).collection('diaries').get();
         cachedDiaries = snap.docs.map(doc => doc.data());
         renderCalendar();
@@ -194,20 +204,38 @@
         const grid = document.getElementById('calendar-grid');
         grid.innerHTML = "";
         const now = new Date();
-        const y = now.getFullYear(); const m = now.getMonth();
-        const last = new Date(y, m+1, 0).getDate();
-        const todayStr = `${y}-${(m+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}`;
+        const y = now.getFullYear(); 
+        const m = now.getMonth();
+        const lastDate = new Date(y, m+1, 0).getDate();
+        const firstDay = new Date(y, m, 1).getDay();
+        
+        document.getElementById('month-label').innerText = `${y}年 ${m+1}月`;
+        
+        // 曜日ラベル
+        ['日','月','火','水','木','金','土'].forEach(d => {
+            const el = document.createElement('div'); el.className = 'day-label'; el.innerText = d; grid.appendChild(el);
+        });
 
+        // 空白マス
+        for(let i=0; i<firstDay; i++) grid.appendChild(document.createElement('div'));
+
+        const todayStr = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}`;
         let total = 0;
-        for(let d=1; d<=last; d++) {
+
+        for(let d=1; d<=lastDate; d++) {
             const ds = `${y}-${(m+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
-            const el = document.createElement('div'); el.className = 'day' + (ds === todayStr ? ' is-today' : '');
+            const el = document.createElement('div'); 
+            el.className = 'day' + (ds === todayStr ? ' is-today' : '');
             el.innerHTML = `<div class="day-num">${d}</div>`;
+            
             const rec = cachedDiaries.find(r => r.date === ds);
             if(rec) {
                 total += parseFloat(rec.dist || 0);
                 const typeClass = {'ジョグ':'bg-jog','インターバル':'bg-int','タイムトライアル':'bg-tt','ペース走':'bg-pace','ビルドアップ':'bg-bu'}[rec.type] || '';
-                el.innerHTML += `<div class="cal-record ${typeClass}">${rec.dist}k ${rec.weather||''}<br>${rec.type}</div>`;
+                el.innerHTML += `<div class="cal-record ${typeClass}">
+                    <b>${rec.dist}k</b> ${rec.weather||''}<br>
+                    <span style="font-size:0.55rem">${rec.type}</span>
+                </div>`;
             }
             el.onclick = () => openModal(ds);
             grid.appendChild(el);
@@ -215,7 +243,44 @@
         document.getElementById('month-total-val').innerText = total.toFixed(2);
     }
 
-    function openModal(d) { selectedDate = d; document.getElementById('modal-date-title').innerText = d; document.getElementById('entry-modal').style.display = 'block'; switchFields(); }
+    // UI切替用関数群
+    function toggleLoc() {
+        const isManual = document.querySelector('input[name="loc-type"]:checked').value === 'manual';
+        document.getElementById('loc-manual-input').style.display = isManual ? 'block' : 'none';
+    }
+
+    function switchFields() {
+        const menu = document.getElementById('menu-select').value;
+        document.querySelectorAll('.menu-sect').forEach(s => s.style.display = 'none');
+        const map = {'ジョグ':'sect-jog','インターバル':'sect-int','タイムトライアル':'sect-tt','ペース走':'sect-pace','ビルドアップ':'sect-bu','その他':'sect-other'};
+        if(map[menu]) document.getElementById(map[menu]).style.display = 'block';
+    }
+
+    function calcJog() {
+        const d = parseFloat(document.getElementById('jog-dist').value);
+        const m = parseFloat(document.getElementById('jog-min').value);
+        if(d && m) {
+            const s = (m * 60) / d;
+            document.getElementById('jog-res').innerText = `平均ペース: ${Math.floor(s/60)}:${Math.round(s%60).toString().padStart(2,'0')}/km`;
+        }
+    }
+
+    function calcPaceTime() {
+        const d = parseFloat(document.getElementById('pace-dist').value);
+        const pStr = document.getElementById('pace-val').value;
+        if(d && pStr.includes(':')) {
+            const [m, s] = pStr.split(':').map(Number);
+            const totalSec = (m * 60 + s) * d;
+            document.getElementById('pace-res').innerText = `予想タイム: ${Math.floor(totalSec/60)}分${Math.round(totalSec%60)}秒`;
+        }
+    }
+
+    function openModal(d) { 
+        selectedDate = d; 
+        document.getElementById('modal-date-title').innerText = d.replace(/-/g, '/'); 
+        document.getElementById('entry-modal').style.display = 'block'; 
+        switchFields(); 
+    }
     function closeModal() { document.getElementById('entry-modal').style.display = 'none'; }
     function openSearch() { document.getElementById('search-modal').style.display = 'block'; }
     function closeSearch() { document.getElementById('search-modal').style.display = 'none'; }
@@ -223,12 +288,21 @@
     function runSearch() {
         const q = parseFloat(document.getElementById('search-dist').value);
         const results = cachedDiaries.filter(r => r.type === 'タイムトライアル' && (!q || parseFloat(r.dist) === q));
+        results.sort((a,b) => a.date < b.date ? 1 : -1);
         const body = document.getElementById('search-body');
-        body.innerHTML = results.map(r => `<tr><td>${r.date}</td><td>${r.dist}km</td><td>${r.detail}</td><td>${r.weather||''}</td></tr>`).join('');
+        if(results.length === 0) {
+            body.innerHTML = '<tr><td colspan="4" style="text-align:center;">記録がありません</td></tr>';
+        } else {
+            body.innerHTML = results.map(r => `<tr><td>${r.date}</td><td>${r.dist}km</td><td><b>${r.detail}</b></td><td>${r.weather||'--'}</td></tr>`).join('');
+        }
     }
 
+    // データ保存 & 天気API処理
     async function saveDiary() {
-        const btn = document.getElementById('save-btn'); btn.disabled = true;
+        if(!auth.currentUser) return;
+        const btn = document.getElementById('save-btn'); 
+        btn.innerText = "データ保存中..."; btn.disabled = true;
+        
         const menu = document.getElementById('menu-select').value;
         let dist = 0, detail = "";
 
@@ -243,30 +317,46 @@
             detail = `${document.getElementById('tt-min').value}:${document.getElementById('tt-sec').value.padStart(2,'0')}.${document.getElementById('tt-msec').value}`;
         } else if(menu==='ビルドアップ') {
             dist = parseFloat(document.getElementById('bu-dist').value)||0;
-            detail = `${document.getElementById('bu-min-pace').value}→${document.getElementById('bu-max-pace').value}`;
+            detail = `${document.getElementById('bu-min-pace').value} → ${document.getElementById('bu-max-pace').value}`;
+        } else if(menu==='ペース走') {
+            dist = parseFloat(document.getElementById('pace-dist').value)||0;
+            detail = `設定: ${document.getElementById('pace-val').value}/km`;
         } else if(menu==='その他') {
             dist = parseFloat(document.getElementById('other-dist').value)||0;
             detail = document.getElementById('other-memo').value;
         }
 
-        // 天気・位置情報
-        let weather = "☁️";
+        // --- 位置情報と天気の取得 ---
+        let weather = "☁️(未取得)";
+        const locType = document.querySelector('input[name="loc-type"]:checked').value;
+        let lat = null, lon = null;
+
         try {
-            const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej));
-            const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&hourly=weathercode,temperature_2m&start_date=${selectedDate}&end_date=${selectedDate}&timezone=Asia%2FTokyo`);
-            const wData = await wRes.json();
-            const hour = parseInt(document.getElementById('start-time').value.split(':')[0]);
-            const icons = {0:"☀️",1:"🌤️",2:"⛅",3:"☁️",61:"☔",95:"⚡"};
-            weather = (icons[wData.hourly.weathercode[hour]] || "☁️") + Math.round(wData.hourly.temperature_2m[hour]) + "℃";
-        } catch(e) {}
+            if (locType === 'gps') {
+                const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej, {timeout:5000}));
+                lat = pos.coords.latitude; lon = pos.coords.longitude;
+            } else {
+                const city = document.getElementById('loc-manual-input').value;
+                if(city) {
+                    const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=ja`);
+                    const geoData = await geoRes.json();
+                    if(geoData.results && geoData.results.length > 0) {
+                        lat = geoData.results[0].latitude; lon = geoData.results[0].longitude;
+                    }
+                }
+            }
+
+            if(lat !== null && lon !== null) {
+                const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=weathercode,temperature_2m&start_date=${selectedDate}&end_date=${selectedDate}&timezone=Asia%2FTokyo`);
+                const wData = await wRes.json();
+                const hour = parseInt(document.getElementById('start-time').value.split(':')[0]) || 0;
+                
+                const icons = {0:"☀️",1:"🌤️",2:"⛅",3:"☁️",45:"🌫️",51:"☔",61:"☔",71:"❄️",95:"⚡"};
+                const code = wData.hourly.weathercode[hour];
+                weather = (icons[code] || "☁️") + Math.round(wData.hourly.temperature_2m[hour]) + "℃";
+            }
+        } catch(e) { console.warn("天気取得に失敗しました", e); }
 
         await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDate).set({
-            date: selectedDate, type: menu, dist: dist.toFixed(2), detail: detail, weather: weather, time: document.getElementById('start-time').value
-        });
-        btn.disabled = false; closeModal(); loadData();
-    }
-
-    window.onload = loadData;
-</script>
-</body>
-</html>
+            date: selectedDate, type: menu, dist: dist.toFixed(2), detail: detail, weather: weather, 
+            time: `${document.getElementBy
