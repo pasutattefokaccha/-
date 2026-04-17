@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUN DIARY - Cloud Sync</title>
+    <title>RUN DIARY - Perfect Cloud</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
@@ -13,34 +13,21 @@
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 
     <style>
-        :root { --primary: #007AFF; --accent: #34c759; --bg: #f2f2f7; --card: #ffffff; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; color: #333; }
-        
-        /* 認証画面 */
+        :root { --primary: #007AFF; --accent: #34c759; --bg: #f2f2f7; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; }
         #auth-container { display: flex; align-items: center; justify-content: center; height: 100vh; }
         .auth-box { background: white; padding: 30px; border-radius: 20px; width: 85%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-
-        /* ヘッダー統計 */
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 15px; background: #fff; }
         .stat-card { background: white; padding: 10px; border-radius: 12px; text-align: center; border: 2px solid #007AFF; }
-        .stat-label { font-size: 0.75rem; color: #666; }
         .stat-val { font-size: 1.2rem; font-weight: bold; color: var(--primary); }
-
-        /* メイン画面 */
-        #map { height: 300px; margin: 10px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .control-panel { padding: 15px; }
+        #map { height: 300px; margin: 10px; border-radius: 15px; }
         .btn-gps { width: 100%; padding: 15px; border-radius: 30px; background: var(--accent); color: white; border: none; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
-
-        /* カレンダー（以前のデザインを維持） */
-        .calendar-section { padding: 15px; }
-        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); background: white; border-radius: 15px; overflow: hidden; }
-        .day { min-height: 80px; padding: 5px; border: 0.5px solid #f0f0f0; font-size: 0.8rem; cursor: pointer; }
-        .bg-jog { background-color: #e3f2fd; color: #1565c0; border-left: 3px solid #1565c0; }
-        .bg-tt { background-color: #fffde7; color: #f9a825; border-left: 3px solid #f9a825; }
-        .bg-interval { background-color: #ffebee; color: #c62828; border-left: 3px solid #c62828; }
-
-        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
-        .hidden { display: none; }
+        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); background: white; border-radius: 15px; padding: 10px; margin: 10px; }
+        .day { min-height: 60px; border: 0.1px solid #eee; font-size: 0.7rem; padding: 2px; }
+        .bg-jog { background: #e3f2fd; border-left: 3px solid #1565c0; }
+        .bg-tt { background: #fffde7; border-left: 3px solid #f9a825; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -50,46 +37,35 @@
         <h2 style="color:var(--primary)">RUN NIKKI</h2>
         <input type="email" id="email" placeholder="メールアドレス">
         <input type="password" id="password" placeholder="パスワード(6文字以上)">
-        <button id="auth-btn" class="btn-gps" onclick="handleAuth()">ログイン / 新規登録</button>
+        <button id="auth-btn" class="btn-gps">ログイン / 新規登録</button>
         <p id="auth-error" style="color:red; font-size:0.8rem; margin-top:10px;"></p>
     </div>
 </div>
 
 <div id="app-container" class="hidden">
     <div class="stats-grid">
-        <div class="stat-card"><div class="stat-label">週</div><div class="stat-val" id="week-dist">0.0</div></div>
-        <div class="stat-card"><div class="stat-label">月</div><div class="stat-val" id="month-dist">0.0</div></div>
-        <div class="stat-card"><div class="stat-label">累計</div><div class="stat-val" id="total-dist">0.0</div></div>
+        <div class="stat-card"><div>週</div><div class="stat-val" id="week-dist">0.0</div></div>
+        <div class="stat-card"><div>月</div><div class="stat-val" id="month-dist">0.0</div></div>
+        <div class="stat-card"><div>累計</div><div class="stat-val" id="total-dist">0.0</div></div>
     </div>
-
     <div id="map"></div>
-
-    <div class="control-panel">
-        <button id="gps-btn" class="btn-gps" onclick="toggleGPS()">GPS計測開始</button>
-        
-        <div style="margin-top:20px; background:white; padding:15px; border-radius:15px;">
+    <div style="padding:15px;">
+        <button id="gps-btn" class="btn-gps">GPS計測開始</button>
+        <div style="background:white; padding:15px; border-radius:15px; margin-top:15px;">
             <input type="number" id="manual-dist" placeholder="距離(km)" step="0.01">
             <select id="menu-type">
                 <option value="ジョグ">ジョグ</option>
                 <option value="タイムトライアル">タイムトライアル</option>
-                <option value="インターバル">インターバル</option>
-                <option value="レスト">レスト</option>
             </select>
-            <button class="btn-gps" style="background:var(--primary)" onclick="saveRecord()">クラウドに保存</button>
+            <button id="save-btn" class="btn-gps" style="background:var(--primary)">クラウド保存</button>
         </div>
-        <button onclick="firebase.auth().signOut()" style="margin-top:20px; border:none; background:none; color:#999; width:100%; font-size: 0.8rem;">ログアウト</button>
+        <button id="logout-btn" style="width:100%; margin-top:20px; background:none; border:none; color:#999;">ログアウト</button>
     </div>
-
-    <div class="calendar-section">
-        <div id="cal-month-title" style="font-weight:bold; margin-bottom:10px; display: flex; justify-content: space-between; align-items: center;">
-            <span id="month-label"></span>
-        </div>
-        <div class="calendar" id="calendar"></div>
-    </div>
+    <div id="calendar" class="calendar"></div>
 </div>
 
 <script>
-    // --- Firebase 設定 ---
+    // --- 1. Firebase初期化設定 ---
     const firebaseConfig = {
         apiKey: "AIzaSyC0VeVEdEpcRP8dOvJokXq0lg2gBzloVls",
         authDomain: "runnikki-a7d37.firebaseapp.com",
@@ -103,17 +79,40 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    let map, userMarker, pathLine;
-    let watchId = null;
-    let currentCoords = [];
-    let totalKm = 0;
+    // --- 2. 認証処理 ---
+    const authBtn = document.getElementById('auth-btn');
+    const errEl = document.getElementById('auth-error');
 
-    // --- 認証管理 ---
+    authBtn.addEventListener('click', async () => {
+        const e = document.getElementById('email').value;
+        const p = document.getElementById('password').value;
+        errEl.innerText = "通信中...";
+
+        if(!e || !p) { errEl.innerText = "入力してください"; return; }
+
+        try {
+            // ログイン試行
+            await auth.signInWithEmailAndPassword(e, p);
+        } catch (error) {
+            console.log("SignIn Error:", error.code);
+            // ユーザーがいない、または新しい認証方式のエラーコードの場合に新規登録
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-login-credentials' || error.code === 'auth/invalid-credential') {
+                try {
+                    await auth.createUserWithEmailAndPassword(e, p);
+                } catch (regError) {
+                    errEl.innerText = "登録エラー: " + regError.message;
+                }
+            } else {
+                errEl.innerText = "エラー: " + error.message;
+            }
+        }
+    });
+
     auth.onAuthStateChanged(user => {
         if (user) {
             document.getElementById('auth-container').classList.add('hidden');
             document.getElementById('app-container').classList.remove('hidden');
-            setTimeout(initMap, 500);
+            initMap();
             loadCloudData();
         } else {
             document.getElementById('auth-container').classList.remove('hidden');
@@ -121,138 +120,72 @@
         }
     });
 
-    async function handleAuth() {
-        const e = document.getElementById('email').value;
-        const p = document.getElementById('password').value;
-        const errEl = document.getElementById('auth-error');
-        errEl.innerText = "通信中...";
-
-        if(!e || !p) { errEl.innerText = "入力してください"; return; }
-        if(p.length < 6) { errEl.innerText = "パスワードは6文字以上です"; return; }
-
-        try {
-            await auth.signInWithEmailAndPassword(e, p);
-        } catch (error) {
-            // エラーコードに関わらず、新規登録を試みる（最新のFirebaseセキュリティ対応）
-            try {
-                await auth.createUserWithEmailAndPassword(e, p);
-            } catch (regError) {
-                errEl.innerText = "エラー: " + regError.message;
-            }
-        }
-    }
-
-    // --- GPS計測 ---
+    // --- 3. GPS & 地図 ---
+    let map, pathLine, watchId, totalKm = 0;
     function initMap() {
-        if (map) return;
+        if(map) return;
         map = L.map('map').setView([35.68, 139.76], 15);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        pathLine = L.polyline([], {color: '#007AFF', weight: 5}).addTo(map);
-        userMarker = L.circleMarker([0,0], {radius: 8, color: 'white', fillColor: '#007AFF', fillOpacity: 1}).addTo(map);
-        
-        navigator.geolocation.getCurrentPosition(p => {
-            const pos = [p.coords.latitude, p.coords.longitude];
-            map.setView(pos, 15);
-            userMarker.setLatLng(pos);
-        }, null, {enableHighAccuracy: true});
+        pathLine = L.polyline([], {color: '#007AFF'}).addTo(map);
     }
 
-    function toggleGPS() {
-        const btn = document.getElementById('gps-btn');
+    document.getElementById('gps-btn').addEventListener('click', function() {
         if (watchId) {
             navigator.geolocation.clearWatch(watchId);
             watchId = null;
-            btn.innerText = "GPS計測開始";
-            btn.style.background = "var(--accent)";
+            this.innerText = "GPS計測開始";
+            this.style.background = "var(--accent)";
             document.getElementById('manual-dist').value = totalKm.toFixed(2);
         } else {
-            totalKm = 0; currentCoords = [];
-            watchId = navigator.geolocation.watchPosition(updatePos, null, {enableHighAccuracy: true});
-            btn.innerText = "計測中... (停止で保存)";
-            btn.style.background = "#ff3b30";
+            totalKm = 0;
+            this.innerText = "計測停止";
+            this.style.background = "#ff3b30";
+            watchId = navigator.geolocation.watchPosition(pos => {
+                const latlng = [pos.coords.latitude, pos.coords.longitude];
+                pathLine.addLatLng(latlng);
+                map.panTo(latlng);
+            }, null, {enableHighAccuracy: true});
         }
-    }
+    });
 
-    function updatePos(pos) {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        const newPoint = [lat, lng];
-        if (currentCoords.length > 0) {
-            const prev = L.latLng(currentCoords[currentCoords.length-1]);
-            totalKm += prev.distanceTo(newPoint) / 1000;
-        }
-        currentCoords.push(newPoint);
-        pathLine.setLatLngs(currentCoords);
-        userMarker.setLatLng(newPoint);
-        map.panTo(newPoint);
-    }
-
-    // --- データ保存・同期 ---
-    async function saveRecord() {
-        const user = auth.currentUser;
+    // --- 4. 保存 & 読み込み ---
+    document.getElementById('save-btn').addEventListener('click', async () => {
         const dist = document.getElementById('manual-dist').value;
         const type = document.getElementById('menu-type').value;
-        const date = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD
-
+        const date = new Date().toLocaleDateString('sv-SE');
         if(!dist) return alert("距離を入力してください");
 
         try {
-            await db.collection('users').doc(user.uid).collection('diaries').doc(date).set({
-                date, dist, type, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(date).set({
+                date, dist, type
             });
-            alert("クラウドに保存しました！");
+            alert("保存完了！");
             loadCloudData();
-        } catch (e) {
-            alert("保存に失敗しました。Firestoreのルールを確認してください。");
-        }
-    }
+        } catch(e) { alert("保存エラー"); }
+    });
 
     async function loadCloudData() {
-        const user = auth.currentUser;
-        const snap = await db.collection('users').doc(user.uid).collection('diaries').orderBy('date', 'desc').get();
+        const snap = await db.collection('users').doc(auth.currentUser.uid).collection('diaries').get();
         const data = snap.docs.map(d => d.data());
         renderCalendar(data);
-        updateStats(data);
     }
 
-    // --- カレンダー描画 ---
     function renderCalendar(records) {
         const cal = document.getElementById('calendar');
         cal.innerHTML = "";
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth();
-        document.getElementById('month-label').innerText = `${year}年 ${month + 1}月`;
-        
-        const firstDay = new Date(year, month, 1).getDay();
-        const lastDate = new Date(year, month + 1, 0).getDate();
-
-        // 空白埋め
-        for(let i=0; i<firstDay; i++) {
-            cal.appendChild(document.createElement('div'));
-        }
-
-        for(let i=1; i<=lastDate; i++) {
-            const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${i.toString().padStart(2, '0')}`;
+        const today = new Date();
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+        for(let i=1; i<=lastDay; i++) {
+            const dateStr = `${today.getFullYear()}-${(today.getMonth()+1).toString().padStart(2,'0')}-${i.toString().padStart(2,'0')}`;
             const rec = records.find(r => r.date === dateStr);
-            const dayEl = document.createElement('div');
-            dayEl.className = 'day';
-            if(rec) {
-                if(rec.type === 'ジョグ') dayEl.classList.add('bg-jog');
-                if(rec.type === 'タイムトライアル') dayEl.classList.add('bg-tt');
-                if(rec.type === 'インターバル') dayEl.classList.add('bg-interval');
-            }
-            dayEl.innerHTML = `<div>${i}</div>${rec ? `<b style="font-size:0.7rem;">${rec.dist}k</b>` : ''}`;
-            cal.appendChild(dayEl);
+            const div = document.createElement('div');
+            div.className = 'day' + (rec ? (rec.type==='ジョグ' ? ' bg-jog':' bg-tt'):'');
+            div.innerHTML = `<div>${i}</div>${rec ? `<b>${rec.dist}k</b>`:''}`;
+            cal.appendChild(div);
         }
     }
 
-    function updateStats(records) {
-        let total = 0;
-        records.forEach(r => total += parseFloat(r.dist || 0));
-        document.getElementById('total-dist').innerText = total.toFixed(1);
-        document.getElementById('month-dist').innerText = total.toFixed(1);
-    }
+    document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
 </script>
 </body>
 </html>
