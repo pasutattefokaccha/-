@@ -175,19 +175,35 @@
 
     let currentViewDate = new Date();
     let selectedDateStr = "";
-    let cachedDiaries = []; // クラウドから取得したデータを保持
+    let cachedDiaries = [];
 
-    // --- 認証管理 ---
+    // --- 認証管理 (判定ロジック入り) ---
     document.getElementById('auth-btn').onclick = async () => {
-        const e = document.getElementById('email').value;
+        const e = document.getElementById('email').value.trim();
         const p = document.getElementById('password').value;
         const err = document.getElementById('auth-error');
+        
+        if (!e) { err.innerText = "メールアドレスを入力してください"; return; }
+        if (!p) { err.innerText = "パスワードを入力してください"; return; }
+        if (p.length < 6) { err.innerText = "パスワードは6文字以上で入力してください"; return; }
+
         err.innerText = "通信中...";
         try {
             await auth.signInWithEmailAndPassword(e, p);
         } catch (error) {
-            try { await auth.createUserWithEmailAndPassword(e, p); }
-            catch (regErr) { err.innerText = "エラー: " + regErr.message; }
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-login-credentials' || error.code === 'auth/invalid-credential') {
+                try {
+                    await auth.createUserWithEmailAndPassword(e, p);
+                } catch (regErr) {
+                    if (regErr.code === 'auth/email-already-in-use') {
+                        err.innerText = "パスワードが違うか、既に登録されています";
+                    } else {
+                        err.innerText = "エラー: " + regErr.message;
+                    }
+                }
+            } else {
+                err.innerText = "ログインエラー: " + error.message;
+            }
         }
     };
 
@@ -204,7 +220,6 @@
         }
     });
 
-    // --- データ取得 ---
     async function loadCloudData() {
         const user = auth.currentUser;
         if(!user) return;
@@ -316,7 +331,6 @@
         const startTime = document.getElementById('start-time').value;
         let dist = 0, detail = "", finalMenuName = menuType, ttTime = "";
 
-        // 入力値の取得（ご提示のロジックと同じ）
         if (menuType === 'ジョグ') {
             dist = parseFloat(document.getElementById('jog-dist').value);
             detail = document.getElementById('jog-res').innerText;
@@ -341,15 +355,4 @@
             detail = document.getElementById('other-content').value;
         }
 
-        if (isNaN(dist) && menuType !== 'レスト') return alert("距離を入力してください");
-
-        const btn = document.getElementById('save-btn');
-        btn.innerText = "データ送信中..."; btn.disabled = true;
-
-        let w = "☁️", t = "--°C";
-        try {
-            const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
-            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current_weather=true&hourly=temperature_2m,weathercode`);
-            const data = await res.json();
-            const targetHour = parseInt(startTime.split(':')[0]);
-            w = "☀️🌤️☁️☁️🌫️☔☔❄️⚡"[Math.min(data
+        if (isNaN(dist) && menuType !== 'レスト') 
