@@ -10,8 +10,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-firestore-compat.js"></script>
     
     <style>
-        :root { --primary: #007AFF; --bg: #f2f2f7; --card: #ffffff; --today: #fff9c4; --success: #2ecc71; --accent: #f9a825; --rest: #95a5a6; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; overflow-x: hidden; }
+        :root { --primary: #007AFF; --bg: #f2f2f7; --card: #ffffff; --today: #fff9c4; --success: #2ecc71; --accent: #f9a825; --danger: #ff3b30; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding-bottom: 80px; }
         
         #system-monitor { font-size: 10px; background: #222; color: #0f0; padding: 8px; border-radius: 8px; margin-bottom: 10px; font-family: monospace; border-left: 4px solid #0f0; }
@@ -20,28 +20,31 @@
         #auth-container { display: flex; align-items: center; justify-content: center; height: 80vh; flex-direction: column; }
         .auth-box { background: white; padding: 25px; border-radius: 20px; width: 85%; max-width: 380px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
-        /* カレンダーヘッダー（月移動） */
+        /* カレンダーヘッダー */
         .monthly-header { background: var(--primary); color: white; padding: 15px; border-radius: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .nav-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 15px; border-radius: 10px; font-weight: bold; cursor: pointer; }
-        .nav-btn:active { background: rgba(255,255,255,0.4); }
+        .nav-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 15px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 1.2rem; }
         .monthly-info { text-align: center; }
         .total-val { font-size: 1.8rem; font-weight: bold; }
 
-        /* カレンダー本体（スマホ最適化） */
+        /* カレンダー（詳細表示対応） */
         .calendar { display: grid; grid-template-columns: repeat(7, 1fr); background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #ddd; }
         .day-label { text-align: center; font-size: 0.7rem; color: #888; padding: 5px 0; background: #fafafa; border-bottom: 1px solid #eee; }
-        .day { aspect-ratio: 1 / 1.2; padding: 4px; border-right: 0.1px solid #f0f0f0; border-bottom: 0.1px solid #f0f0f0; cursor: pointer; position: relative; overflow: hidden; }
-        .day-num { font-size: 0.75rem; font-weight: bold; }
+        .day { aspect-ratio: 1 / 1.3; padding: 4px; border-right: 0.1px solid #f0f0f0; border-bottom: 0.1px solid #f0f0f0; cursor: pointer; position: relative; display: flex; flex-direction: column; }
+        .day-num { font-size: 0.75rem; font-weight: bold; margin-bottom: 2px; }
         .is-today { background-color: var(--today) !important; border: 1.5px solid var(--accent) !important; z-index: 1; }
         
-        .cal-record { font-size: 0.55rem; padding: 2px; border-radius: 3px; margin-top: 2px; border-left: 2px solid #ccc; line-height: 1.1; word-break: break-all; }
+        /* カレンダー内の記録表示 */
+        .cal-record { font-size: 0.6rem; border-radius: 3px; border-left: 2px solid #ccc; line-height: 1.2; padding: 1px 2px; margin-top: 1px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .bg-jog { background: #e3f2fd; color: #1565c0; border-left-color: #1565c0; }
         .bg-int { background: #ffebee; color: #c62828; border-left-color: #c62828; }
         .bg-tt { background: #fffde7; color: #f9a825; border-left-color: #f9a825; }
         .bg-pace { background: #f1f8e9; color: #2e7d32; border-left-color: #2e7d32; }
         .bg-bu { background: #f3e5f5; color: #7b1fa2; border-left-color: #7b1fa2; }
-        .bg-rest { background: #f5f5f5; color: #616161; border-left-color: var(--rest); }
+        .bg-rest { background: #f5f5f5; color: #616161; border-left-color: #95a5a6; }
         .bg-other { background: #eceff1; color: #455a64; border-left-color: #455a64; }
+
+        .rec-dist { font-weight: 800; font-size: 0.7rem; }
+        .rec-weather { font-size: 0.55rem; color: #555; }
 
         /* モーダル */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; overflow-y: auto; }
@@ -50,11 +53,9 @@
         input, select, textarea { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 1rem; }
         .btn { width: 100%; padding: 15px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 1rem; }
         .btn-save { background: var(--success); color: white; }
+        .btn-delete { background: var(--danger); color: white; margin-top: 20px; font-size: 0.9rem; }
         .hidden { display: none !important; }
         .dynamic-section { background: #f8f9fa; padding: 12px; border-radius: 12px; border-left: 4px solid var(--primary); margin: 8px 0; }
-        .res-preview { color: var(--primary); font-weight: bold; font-size: 0.9rem; margin-top: 4px; }
-
-        .fab { position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: var(--accent); color: white; border-radius: 30px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; z-index: 90; }
     </style>
 </head>
 <body>
@@ -63,7 +64,7 @@
 
 <div id="auth-container">
     <div class="auth-box">
-        <h2 style="color:var(--primary); margin:0 0 20px 0;">PRO RUN DIARY</h2>
+        <h2 style="color:var(--primary); margin-bottom:20px;">PRO RUN DIARY</h2>
         <input type="email" id="email" placeholder="メールアドレス">
         <input type="password" id="password" placeholder="パスワード">
         <button onclick="handleLogin()" class="btn" style="background:var(--primary); color:white;">ログイン</button>
@@ -93,14 +94,14 @@
     <div class="modal-content">
         <h3 id="modal-date-title" style="margin-top:0; color:var(--primary);"></h3>
         
-        <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
-            <input type="time" id="start-time" value="17:00" style="width:45%"> <span>〜</span> <input type="time" id="end-time" value="18:30" style="width:45%">
+        <div style="display:flex; gap:10px; align-items:center;">
+            <input type="time" id="start-time" value="17:00"> <span>〜</span> <input type="time" id="end-time" value="18:30">
         </div>
 
-        <div style="background:#f0f4f8; padding:12px; border-radius:12px; margin-bottom:12px; font-size:0.85rem;">
+        <div style="background:#f0f4f8; padding:12px; border-radius:12px; margin:10px 0; font-size:0.85rem;">
             <label><input type="radio" name="loc-type" value="gps" checked onchange="toggleLoc()"> GPS</label>
             <label style="margin-left:15px;"><input type="radio" name="loc-type" value="manual" onchange="toggleLoc()"> 手動(市区町村)</label>
-            <input type="text" id="loc-manual-input" placeholder="例: 西東京市" style="display:none; margin-top:8px; height:35px;">
+            <input type="text" id="loc-manual-input" placeholder="市区町村 (例: 西東京市)" style="display:none; margin-top:8px;">
         </div>
 
         <select id="menu-select" onchange="switchFields()">
@@ -114,48 +115,47 @@
         </select>
 
         <div id="sect-jog" class="menu-sect dynamic-section">
-            <input type="number" id="jog-dist" step="0.01" placeholder="距離 (km)" oninput="calcJog()">
-            <input type="number" id="jog-min" placeholder="時間 (分)" oninput="calcJog()">
-            <div id="jog-res" class="res-preview">ペース: --:--/km</div>
+            <input type="number" id="jog-dist" step="0.01" placeholder="距離 (km)">
+            <input type="number" id="jog-min" placeholder="合計時間 (分)">
         </div>
 
         <div id="sect-int" class="menu-sect dynamic-section" style="display:none;">
             <input type="number" id="int-dist" placeholder="1本の距離 (km)">
             <input type="number" id="int-count" placeholder="本数">
-            <input type="text" id="int-rest" placeholder="レスト内容 (例: 200m 70秒)">
+            <input type="text" id="int-rest" placeholder="レスト (例: 200m 70s)">
         </div>
 
         <div id="sect-tt" class="menu-sect dynamic-section" style="display:none;">
             <input type="number" id="tt-dist" placeholder="距離 (km)">
             <div style="display:flex; gap:5px; align-items:center;">
-                <input type="number" id="tt-min" placeholder="分" style="width:30%"><span>:</span>
-                <input type="number" id="tt-sec" placeholder="秒" style="width:30%"><span>.</span>
+                <input type="number" id="tt-min" placeholder="分" style="width:30%">:
+                <input type="number" id="tt-sec" placeholder="秒" style="width:30%">.
                 <input type="number" id="tt-msec" placeholder="0" style="width:20%">
             </div>
         </div>
 
         <div id="sect-pace" class="menu-sect dynamic-section" style="display:none;">
-            <input type="number" id="pace-dist" placeholder="距離 (km)" oninput="calcPaceTime()">
-            <input type="text" id="pace-val" placeholder="設定ペース (例: 4:15)" oninput="calcPaceTime()">
-            <div id="pace-res" class="res-preview">合計タイム: --:--</div>
+            <input type="number" id="pace-dist" placeholder="距離 (km)">
+            <input type="text" id="pace-val" placeholder="設定ペース (例: 4:15)">
         </div>
 
         <div id="sect-bu" class="menu-sect dynamic-section" style="display:none;">
             <input type="number" id="bu-dist" placeholder="距離 (km)">
-            <input type="text" id="bu-start-pace" placeholder="開始ペース (例: 5:00)">
-            <input type="text" id="bu-end-pace" placeholder="終了ペース (例: 4:00)">
+            <input type="text" id="bu-start-pace" placeholder="開始ペース">
+            <input type="text" id="bu-end-pace" placeholder="終了ペース">
         </div>
 
         <div id="sect-rest" class="menu-sect dynamic-section" style="display:none;">
-            <textarea id="rest-memo" placeholder="レストの内容 (例: 20分完全休養、マッサージ)" rows="2"></textarea>
+            <textarea id="rest-memo" placeholder="レスト内容" rows="2"></textarea>
         </div>
 
         <div id="sect-other" class="menu-sect dynamic-section" style="display:none;">
             <input type="number" id="other-dist" placeholder="距離 (km)">
-            <textarea id="other-memo" placeholder="その他の内容" rows="2"></textarea>
+            <textarea id="other-memo" placeholder="練習メモ" rows="2"></textarea>
         </div>
 
-        <button class="btn btn-save" id="save-btn" onclick="saveDiary()">保存 (天気を取得)</button>
+        <button class="btn btn-save" id="save-btn" onclick="saveDiary()">記録を保存 (天気を取得)</button>
+        <button class="btn btn-delete hidden" id="delete-btn" onclick="deleteDiary()">この日の記録を削除</button>
         <button class="btn" style="background:#eee;" onclick="closeModal()">キャンセル</button>
     </div>
 </div>
@@ -163,7 +163,7 @@
 <script>
     const log = (m) => { document.getElementById('system-monitor').innerText = "Status: " + m; };
 
-    // --- Firebase設定 ---
+    // Firebase初期化
     const firebaseConfig = {
         apiKey: "AIzaSyC0VeVEdEpcRP8dOvJokXq0lg2gBzloVls",
         authDomain: "runnikki-a7d37.firebaseapp.com",
@@ -172,24 +172,21 @@
         messagingSenderId: "623990853537",
         appId: "1:623990853537:web:68417f21002106b5c745e0"
     };
-
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
     let cachedDiaries = [];
     let selectedDate = "";
-    let currentViewDate = new Date(); // 表示中の月管理用
+    let currentViewDate = new Date();
 
-    // 認証監視
     auth.onAuthStateChanged(user => {
         if (user) {
-            log("Logged in as " + user.email);
+            log("Logged in: " + user.email);
             document.getElementById('auth-container').classList.add('hidden');
             document.getElementById('app-container').classList.remove('hidden');
             loadData();
         } else {
-            log("Please Login.");
             document.getElementById('auth-container').classList.remove('hidden');
             document.getElementById('app-container').classList.add('hidden');
         }
@@ -198,18 +195,15 @@
     async function handleLogin() {
         const e = document.getElementById('email').value;
         const p = document.getElementById('password').value;
-        try { await auth.signInWithEmailAndPassword(e, p); } 
-        catch(err) { document.getElementById('auth-error').innerText = err.message; }
+        try { await auth.signInWithEmailAndPassword(e, p); } catch(err) { alert(err.message); }
     }
 
     async function handleSignup() {
         const e = document.getElementById('email').value;
         const p = document.getElementById('password').value;
-        try { await auth.createUserWithEmailAndPassword(e, p); alert("登録完了"); } 
-        catch(err) { alert(err.message); }
+        try { await auth.createUserWithEmailAndPassword(e, p); alert("登録完了"); } catch(err) { alert(err.message); }
     }
 
-    // --- カレンダーロジック ---
     async function loadData() {
         const snap = await db.collection('users').doc(auth.currentUser.uid).collection('diaries').get();
         cachedDiaries = snap.docs.map(doc => doc.data());
@@ -224,35 +218,36 @@
     function renderCalendar() {
         const grid = document.getElementById('calendar-grid');
         grid.innerHTML = "";
-        
         const y = currentViewDate.getFullYear();
         const m = currentViewDate.getMonth();
         const firstDay = new Date(y, m, 1).getDay();
         const lastDate = new Date(y, m + 1, 0).getDate();
         
         document.getElementById('month-label').innerText = `${y}年 ${m + 1}月`;
-        
         ['日','月','火','水','木','金','土'].forEach(d => {
-            const el = document.createElement('div'); el.className = 'day-label'; el.innerText = d; grid.appendChild(el);
+            grid.innerHTML += `<div class="day-label">${d}</div>`;
         });
 
         for(let i=0; i<firstDay; i++) grid.appendChild(document.createElement('div'));
 
-        const now = new Date();
-        const todayStr = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}`;
         let monthTotal = 0;
+        const nowStr = new Date().toISOString().split('T')[0];
 
         for(let d=1; d<=lastDate; d++) {
             const ds = `${y}-${(m+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
             const el = document.createElement('div');
-            el.className = 'day' + (ds === todayStr ? ' is-today' : '');
+            el.className = 'day' + (ds === nowStr ? ' is-today' : '');
             el.innerHTML = `<div class="day-num">${d}</div>`;
             
             const rec = cachedDiaries.find(r => r.date === ds);
             if(rec) {
                 monthTotal += parseFloat(rec.dist || 0);
                 const typeClass = {'ジョグ':'bg-jog','インターバル':'bg-int','タイムトライアル':'bg-tt','ペース走':'bg-pace','ビルドアップ':'bg-bu','レスト':'bg-rest','その他':'bg-other'}[rec.type] || '';
-                el.innerHTML += `<div class="cal-record ${typeClass}"><b>${rec.dist}k</b><br>${rec.weather.split('℃')[0]}</div>`;
+                el.innerHTML += `
+                    <div class="cal-record ${typeClass}">
+                        <div class="rec-weather">${rec.weather || ''}</div>
+                        <div class="rec-dist">${rec.dist}k</div>
+                    </div>`;
             }
             el.onclick = () => openModal(ds);
             grid.appendChild(el);
@@ -260,7 +255,6 @@
         document.getElementById('month-total-val').innerText = monthTotal.toFixed(2);
     }
 
-    // --- UI制御 ---
     function toggleLoc() {
         document.getElementById('loc-manual-input').style.display = 
             document.querySelector('input[name="loc-type"]:checked').value === 'manual' ? 'block' : 'none';
@@ -269,52 +263,56 @@
     function switchFields() {
         const menu = document.getElementById('menu-select').value;
         document.querySelectorAll('.menu-sect').forEach(s => s.style.display = 'none');
-        const map = {'ジョグ':'sect-jog','インターバル':'sect-int','タイムトライアル':'sect-tt','ペース走':'sect-pace','ビルドアップ':'sect-bu','レスト':'sect-rest','その他':'sect-other'};
-        if(map[menu]) document.getElementById(map[menu]).style.display = 'block';
+        const id = {'ジョグ':'sect-jog','インターバル':'sect-int','タイムトライアル':'sect-tt','ペース走':'sect-pace','ビルドアップ':'sect-bu','レスト':'sect-rest','その他':'sect-other'}[menu];
+        if(id) document.getElementById(id).style.display = 'block';
     }
 
-    function calcJog() {
-        const d = parseFloat(document.getElementById('jog-dist').value);
-        const m = parseFloat(document.getElementById('jog-min').value);
-        if(d && m) {
-            const s = (m * 60) / d;
-            document.getElementById('jog-res').innerText = `ペース: ${Math.floor(s/60)}:${Math.round(s%60).toString().padStart(2,'0')}/km`;
+    function openModal(d) {
+        selectedDate = d;
+        document.getElementById('modal-date-title').innerText = d;
+        const rec = cachedDiaries.find(r => r.date === d);
+        
+        // 初期化 & 既存データ反映
+        document.getElementById('delete-btn').classList.toggle('hidden', !rec);
+        if(rec) {
+            document.getElementById('menu-select').value = rec.type;
+            if(rec.type==='ジョグ') { document.getElementById('jog-dist').value = rec.dist; }
+            if(rec.type==='タイムトライアル') { 
+                document.getElementById('tt-dist').value = rec.dist;
+                const parts = rec.detail.split(/[:.]/);
+                document.getElementById('tt-min').value = parts[0];
+                document.getElementById('tt-sec').value = parts[1];
+                document.getElementById('tt-msec').value = parts[2];
+            }
+            // 他の項目も同様にセット
         }
+        switchFields();
+        document.getElementById('entry-modal').style.display = 'block';
     }
 
-    function calcPaceTime() {
-        const d = parseFloat(document.getElementById('pace-dist').value);
-        const pStr = document.getElementById('pace-val').value;
-        if(d && pStr.includes(':')) {
-            const [m, s] = pStr.split(':').map(Number);
-            const totalSec = (m * 60 + s) * d;
-            document.getElementById('pace-res').innerText = `合計: ${Math.floor(totalSec/60)}分${Math.round(totalSec%60)}秒`;
-        }
-    }
-
-    function openModal(d) { selectedDate = d; document.getElementById('modal-date-title').innerText = d; document.getElementById('entry-modal').style.display = 'block'; switchFields(); }
     function closeModal() { document.getElementById('entry-modal').style.display = 'none'; }
 
+    async function deleteDiary() {
+        if(!confirm("この日の記録を削除しますか？")) return;
+        await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDate).delete();
+        closeModal(); loadData();
+    }
+
     async function saveDiary() {
-        const btn = document.getElementById('save-btn'); btn.disabled = true; btn.innerText = "保存中...";
+        const btn = document.getElementById('save-btn'); btn.disabled = true;
         const menu = document.getElementById('menu-select').value;
         let dist = 0, detail = "";
 
         if(menu==='ジョグ') {
             dist = parseFloat(document.getElementById('jog-dist').value)||0;
-            detail = document.getElementById('jog-res').innerText;
-        } else if(menu==='インターバル') {
-            dist = (parseFloat(document.getElementById('int-dist').value)||0) * (parseInt(document.getElementById('int-count').value)||0);
-            detail = `${document.getElementById('int-count').value}本 (${document.getElementById('int-rest').value})`;
         } else if(menu==='タイムトライアル') {
             dist = parseFloat(document.getElementById('tt-dist').value)||0;
             detail = `${document.getElementById('tt-min').value}:${document.getElementById('tt-sec').value.padStart(2,'0')}.${document.getElementById('tt-msec').value}`;
+        } else if(menu==='インターバル') {
+            dist = (parseFloat(document.getElementById('int-dist').value)||0) * (parseInt(document.getElementById('int-count').value)||0);
+            detail = `${document.getElementById('int-count').value}本`;
         } else if(menu==='ビルドアップ') {
             dist = parseFloat(document.getElementById('bu-dist').value)||0;
-            detail = `${document.getElementById('bu-start-pace').value}→${document.getElementById('bu-end-pace').value}`;
-        } else if(menu==='ペース走') {
-            dist = parseFloat(document.getElementById('pace-dist').value)||0;
-            detail = `${document.getElementById('pace-val').value}/km`;
         } else if(menu==='レスト') {
             detail = document.getElementById('rest-memo').value;
         } else if(menu==='その他') {
@@ -326,7 +324,7 @@
         try {
             let lat, lon;
             if (document.querySelector('input[name="loc-type"]:checked').value === 'gps') {
-                const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej, {timeout:5000}));
+                const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:5000}));
                 lat = pos.coords.latitude; lon = pos.coords.longitude;
             } else {
                 const city = document.getElementById('loc-manual-input').value;
@@ -346,8 +344,7 @@
             time: document.getElementById('start-time').value
         });
 
-        btn.disabled = false; btn.innerText = "保存 (天気を取得)";
-        closeModal(); loadData();
+        btn.disabled = false; closeModal(); loadData();
     }
 </script>
 </body>
