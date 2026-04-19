@@ -159,39 +159,44 @@
 <script>
     const log = (m) => { document.getElementById('system-monitor').innerText = "Status: " + m; };
 
-    // スクショから確定した設定値
+    // Firebaseコンソールのスクショ(1000002154.png)に基づく最新設定
     const firebaseConfig = {
         apiKey: "AIzaSyC0VeVEdEpcRP8dOvJokXq0lg2gBzloVls",
         authDomain: "runnikki-a7d37.firebaseapp.com",
         projectId: "runnikki-a7d37",
-        storageBucket: "runnikki-a7d37.appspot.com",
+        storageBucket: "runnikki-a7d37.appspot.com", // 修正
         messagingSenderId: "623990853537",
         appId: "1:623990853537:web:68417f21002106b5c745e0"
     };
 
+    let auth, db;
+    let cachedDiaries = [], selectedDate = "", currentViewDate = new Date();
+
+    // 初期化プロセスを明確化
     try {
         firebase.initializeApp(firebaseConfig);
-        log("Firebase Loaded OK");
+        auth = firebase.auth();
+        db = firebase.firestore();
+        log("Firebase Initialized");
     } catch(e) {
         log("Init Error: " + e.message);
     }
 
-    const auth = firebase.auth(); 
-    const db = firebase.firestore();
-    let cachedDiaries = [], selectedDate = "", currentViewDate = new Date();
-
-    auth.onAuthStateChanged(user => {
-        if (user) { 
-            log("Ready: " + user.email); 
-            document.getElementById('auth-container').classList.add('hidden'); 
-            document.getElementById('app-container').classList.remove('hidden'); 
-            loadData(); 
-        } else { 
-            log("Waiting Login..."); 
-            document.getElementById('auth-container').classList.remove('hidden'); 
-            document.getElementById('app-container').classList.add('hidden'); 
-        }
-    });
+    // 認証状態の監視
+    if (auth) {
+        auth.onAuthStateChanged(user => {
+            if (user) { 
+                log("Ready: " + user.email); 
+                document.getElementById('auth-container').classList.add('hidden'); 
+                document.getElementById('app-container').classList.remove('hidden'); 
+                loadData(); 
+            } else { 
+                log("Waiting Login..."); 
+                document.getElementById('auth-container').classList.remove('hidden'); 
+                document.getElementById('app-container').classList.add('hidden'); 
+            }
+        });
+    }
 
     async function handleLogin() {
         const e = document.getElementById('email').value.trim();
@@ -328,5 +333,4 @@
         const btn = document.getElementById('save-btn'); btn.disabled = true; btn.innerText = "取得中...";
         const menu = document.getElementById('menu-select').value;
         let dist = 0, detail = "";
-        if(menu==='ジョグ') { dist = parseFloat(document.getElementById('jog-dist').value)||0; detail = `${document.getElementById('jog-min').value}分 / ${document.getElementById('jog-res').innerText}`; }
-        else if(men
+        if(menu==='ジョグ') { dist = parseFloat(document.getElementBy
