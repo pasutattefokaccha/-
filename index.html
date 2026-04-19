@@ -10,7 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-firestore-compat.js"></script>
     
     <style>
-        :root { --primary: #007AFF; --bg: #f2f2f7; --card: #ffffff; --today: #fff9c4; }
+        :root { --primary: #007AFF; --bg: #f2f2f7; --card: #ffffff; --today: #fff9c4; --danger: #ff3b30; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding-bottom: 80px; }
         
@@ -59,6 +59,7 @@
         .btn { width: 100%; padding: 14px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-save { background: var(--primary); color: white; }
         .btn-cancel { background: #eee; color: #666; }
+        .btn-delete { background: none; color: var(--danger); font-size: 0.9rem; margin-top: 20px; }
         .hidden { display: none !important; }
         .dynamic-section { background: #f9f9f9; padding: 10px; border-radius: 10px; margin-top: 10px; border-left: 4px solid var(--primary); }
         .result-box { margin-top: 10px; padding: 10px; background: #eef6ff; border-radius: 10px; font-size: 0.9rem; font-weight: bold; color: var(--primary); }
@@ -142,6 +143,7 @@
         </div>
         <button class="btn btn-save" id="save-btn" onclick="saveDiary()">日誌を保存（天気取得）</button>
         <button class="btn btn-cancel" onclick="closeModal()">キャンセル</button>
+        <button class="btn btn-delete" id="delete-btn" onclick="deleteDiary()" style="display:none;">この日の記録を削除</button>
     </div>
 </div>
 
@@ -305,9 +307,41 @@
         return classes[type] || 'bg-other';
     }
 
+    function clearInputs() {
+        document.querySelectorAll('#entry-modal input, #entry-modal textarea').forEach(el => el.value = "");
+        document.getElementById('menu-select').value = "ジョグ";
+        document.getElementById('jog-res').innerText = "平均ペース: --:--/km";
+        document.getElementById('int-res').innerText = "走行合計: 0.00 km";
+    }
+
     function openModal(dateStr) {
         selectedDateStr = dateStr;
         document.getElementById('modal-date-title').innerText = dateStr.replace(/-/g, '/');
+        clearInputs();
+        
+        const record = cachedDiaries.find(item => item.date === dateStr);
+        if (record) {
+            document.getElementById('menu-select').value = record.type;
+            if (record.type === 'ジョグ') {
+                const detailParts = record.detail.match(/(\d+):(\d+)/); // ペースから逆算は難しいため入力値があれば望ましいが、今回は記録のみ
+                document.getElementById('jog-dist').value = record.dist;
+            } else if (record.type === 'タイムトライアル') {
+                document.getElementById('tt-dist-km').value = record.dist;
+                if(record.ttTime) {
+                    const t = record.ttTime.split(/[:.]/);
+                    document.getElementById('tt-min').value = t[0];
+                    document.getElementById('tt-sec').value = t[1];
+                    document.getElementById('tt-msec').value = t[2];
+                }
+            } else if (record.type === 'その他') {
+                document.getElementById('other-dist').value = record.dist;
+                document.getElementById('other-content').value = record.detail;
+            }
+            document.getElementById('delete-btn').style.display = 'block';
+        } else {
+            document.getElementById('delete-btn').style.display = 'none';
+        }
+        
         document.getElementById('entry-modal').style.display = 'block';
         toggleMenuFields();
     }
@@ -346,32 +380,4 @@
             dist = parseFloat(document.getElementById('bu-dist').value) || 0;
             detail = `BU: ${document.getElementById('bu-start').value}〜${document.getElementById('bu-end').value}`;
         } else if (menuType === 'その他') {
-            dist = parseFloat(document.getElementById('other-dist').value) || 0;
-            detail = document.getElementById('other-content').value;
-        }
-        
-        if (menuType !== 'レスト' && (isNaN(dist) || dist <= 0)) return alert("距離を正しく入力してください");
-        
-        const btn = document.getElementById('save-btn');
-        btn.innerText = "保存中..."; btn.disabled = true;
-        let w = "☁️", t = "--°C";
-        try {
-            const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, {timeout: 5000}));
-            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current_weather=true`);
-            const data = await res.json();
-            t = Math.round(data.current_weather.temperature) + "°C";
-        } catch(e) {}
-        
-        const diary = { date: selectedDateStr, type: menuType, dist: dist.toFixed(2), detail: detail, weather: w, temp: t, ttTime: ttTime };
-        try {
-            await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDateStr).set(diary);
-            closeModal(); loadCloudData();
-        } catch (e) { alert("保存失敗: " + e.message); }
-        btn.innerText = "日誌を保存（天気取得）"; btn.disabled = false;
-    }
-
-    document.getElementById('logout-btn').onclick = () => auth.signOut();
-    window.onload = renderCalendar;
-</script>
-</body>
-</html>
+            dist = parseFloat(document.getElem
