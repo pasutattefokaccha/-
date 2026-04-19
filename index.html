@@ -44,7 +44,7 @@
 </head>
 <body>
 
-<div id="system-monitor">Initializing Firebase...</div>
+<div id="system-monitor">Wait...</div>
 
 <div id="auth-container">
     <div class="auth-box">
@@ -157,32 +157,37 @@
 </div>
 
 <script>
-    const log = (m) => { 
-        document.getElementById('system-monitor').innerText = "Status: " + m;
-    };
+    const log = (m) => { document.getElementById('system-monitor').innerText = "Status: " + m; };
 
+    // スクショから確定した設定値
     const firebaseConfig = {
         apiKey: "AIzaSyC0VeVEdEpcRP8dOvJokXq0lg2gBzloVls",
         authDomain: "runnikki-a7d37.firebaseapp.com",
         projectId: "runnikki-a7d37",
-        storageBucket: "runnikki-a7d37.firebasestorage.app",
+        storageBucket: "runnikki-a7d37.appspot.com",
         messagingSenderId: "623990853537",
         appId: "1:623990853537:web:68417f21002106b5c745e0"
     };
 
-    firebase.initializeApp(firebaseConfig);
+    try {
+        firebase.initializeApp(firebaseConfig);
+        log("Firebase Loaded OK");
+    } catch(e) {
+        log("Init Error: " + e.message);
+    }
+
     const auth = firebase.auth(); 
     const db = firebase.firestore();
     let cachedDiaries = [], selectedDate = "", currentViewDate = new Date();
 
     auth.onAuthStateChanged(user => {
         if (user) { 
-            log("Logged in: " + user.email); 
+            log("Ready: " + user.email); 
             document.getElementById('auth-container').classList.add('hidden'); 
             document.getElementById('app-container').classList.remove('hidden'); 
             loadData(); 
         } else { 
-            log("Waiting for login..."); 
+            log("Waiting Login..."); 
             document.getElementById('auth-container').classList.remove('hidden'); 
             document.getElementById('app-container').classList.add('hidden'); 
         }
@@ -191,33 +196,26 @@
     async function handleLogin() {
         const e = document.getElementById('email').value.trim();
         const p = document.getElementById('password').value.trim();
-        if(!e || !p) { alert("入力してください"); return; }
-        
+        if(!e || !p) return;
         log("Logging in...");
         try {
             await auth.signInWithEmailAndPassword(e, p);
         } catch(err) {
             log("Error: " + err.code);
-            alert("ログイン失敗\nコード: " + err.code + "\n理由: " + err.message);
+            alert("ログイン失敗: " + err.message);
         }
     }
 
     async function handleSignup() {
         const e = document.getElementById('email').value.trim();
         const p = document.getElementById('password').value.trim();
-        if(!e || !p) { alert("メールとパスワードを入力してください"); return; }
-        
-        log("Registering...");
+        if(!e || !p) return;
+        log("Signing up...");
         try {
             await auth.createUserWithEmailAndPassword(e, p);
-            alert("登録完了！ログインしました。");
         } catch(err) {
-            log("Signup Error: " + err.code);
-            if(err.code === 'auth/operation-not-allowed') {
-                alert("エラー: Firebase側で「メール/パスワード認証」が有効になっていません。\nコンソールのAuthenticationから有効にしてください。");
-            } else {
-                alert("登録失敗\nコード: " + err.code + "\n理由: " + err.message);
-            }
+            log("Error: " + err.code);
+            alert("登録失敗: " + err.message);
         }
     }
 
@@ -227,8 +225,9 @@
             const snap = await db.collection('users').doc(auth.currentUser.uid).collection('diaries').get();
             cachedDiaries = snap.docs.map(doc => doc.data());
             renderCalendar();
+            log("Data Loaded (" + cachedDiaries.length + ")");
         } catch(e) {
-            log("Database Error: " + e.message);
+            log("Firestore Error: " + e.message);
         }
     }
 
@@ -329,3 +328,5 @@
         const btn = document.getElementById('save-btn'); btn.disabled = true; btn.innerText = "取得中...";
         const menu = document.getElementById('menu-select').value;
         let dist = 0, detail = "";
+        if(menu==='ジョグ') { dist = parseFloat(document.getElementById('jog-dist').value)||0; detail = `${document.getElementById('jog-min').value}分 / ${document.getElementById('jog-res').innerText}`; }
+        else if(men
