@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RUN DIARY - ULTIMATE</title>
+    <title>RUN DIARY</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
@@ -14,13 +14,10 @@
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding-bottom: 80px; }
         
-        /* システムモニター (デバッグ用) */
-        #system-monitor { font-size: 10px; background: #222; color: #0f0; padding: 8px; border-radius: 8px; margin-bottom: 10px; font-family: monospace; border-left: 4px solid #0f0; word-break: break-all; }
-
         /* 認証画面 */
         #auth-container { display: flex; align-items: center; justify-content: center; height: 90vh; }
         .auth-box { background: white; padding: 30px; border-radius: 25px; width: 85%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        #auth-error { color: #d32f2f; font-size: 0.85rem; margin-top: 15px; background: #ffebee; padding: 10px; border-radius: 8px; display: none; text-align: left; word-break: break-all; white-space: pre-wrap; }
+        #auth-error { color: #d32f2f; font-size: 0.85rem; margin: 15px 0; background: #ffebee; padding: 10px; border-radius: 8px; display: none; text-align: left; word-break: break-all; }
 
         /* メイン画面 */
         .monthly-stats { background: var(--primary); color: white; padding: 20px; border-radius: 20px; margin-bottom: 15px; text-align: center; }
@@ -52,8 +49,6 @@
     </style>
 </head>
 <body>
-
-<div id="system-monitor">Wait...</div>
 
 <div id="auth-container">
     <div class="auth-box">
@@ -139,7 +134,7 @@
         </div>
 
         <textarea id="common-memo" placeholder="メモ・感想" rows="3"></textarea>
-        <button class="btn btn-save" id="save-btn" onclick="saveDiary()">保存 (天気を取得)</button>
+        <button class="btn btn-save" id="save-btn" onclick="saveDiary()">保存</button>
         <button class="btn btn-cancel" onclick="closeModal()">キャンセル</button>
         <button id="delete-btn" class="btn" style="background:#ff3b30; color:white; display:none;" onclick="deleteDiary()">削除</button>
     </div>
@@ -148,15 +143,13 @@
 <div id="search-modal" class="modal">
     <div class="modal-content">
         <h3>TT記録検索</h3>
-        <input type="number" id="search-query" step="0.01" placeholder="距離 (km) を入力して検索" oninput="searchTT()">
+        <input type="number" id="search-query" step="0.01" placeholder="距離 (km) を入力" oninput="searchTT()">
         <div id="search-results" style="margin-top:20px; max-height:350px; overflow-y:auto; border-top:1px solid #eee;"></div>
         <button class="btn btn-cancel" onclick="closeSearch()">閉じる</button>
     </div>
 </div>
 
 <script>
-    const log = (m) => { document.getElementById('system-monitor').innerText = "Status: " + m; };
-
     const firebaseConfig = {
         apiKey: "AIzaSyC0VeVEdEpcRP8dOvJokXq0lg2gBzloVls",
         authDomain: "runnikki-a7d37.firebaseapp.com",
@@ -174,95 +167,102 @@
     let selectedDateStr = "";
     let cachedDiaries = [];
 
-    // --- 認証処理 ---
+    // --- 認証 ---
     const authBtn = document.getElementById('auth-btn');
     const errDiv = document.getElementById('auth-error');
 
-    authBtn.addEventListener('click', async () => {
-        const email = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value;
+    authBtn.onclick = async () => {
+        const e = document.getElementById('email').value.trim();
+        const p = document.getElementById('password').value;
         errDiv.style.display = 'none';
-        if (!email || !password) return showError("入力してください");
+        if (!e || !p) return;
 
-        authBtn.innerText = "通信中...";
         authBtn.disabled = true;
+        authBtn.innerText = "通信中...";
 
         try {
-            await auth.signInWithEmailAndPassword(email, password);
-        } catch (error) {
-            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+            await auth.signInWithEmailAndPassword(e, p);
+        } catch (err) {
+            if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-login-credentials') {
                 try {
-                    await auth.createUserWithEmailAndPassword(email, password);
-                } catch (regErr) {
-                    showError("登録エラー: " + regErr.message);
-                }
-            } else {
-                showError("エラー: " + error.code);
-            }
+                    await auth.createUserWithEmailAndPassword(e, p);
+                } catch (regErr) { showError("認証エラー: " + regErr.message); }
+            } else { showError("エラー: " + err.code); }
         }
-        authBtn.innerText = "ログイン / 新規登録";
         authBtn.disabled = false;
-    });
+        authBtn.innerText = "ログイン / 新規登録";
+    };
 
     auth.onAuthStateChanged(user => {
         if (user) {
-            log("Logged in: " + user.email);
             document.getElementById('auth-container').classList.add('hidden');
             document.getElementById('app-container').classList.remove('hidden');
             loadCloudData();
         } else {
-            log("Please Login");
             document.getElementById('auth-container').classList.remove('hidden');
             document.getElementById('app-container').classList.add('hidden');
         }
     });
 
-    function showError(msg) { errDiv.innerText = msg; errDiv.style.display = 'block'; }
+    function showError(m) { errDiv.innerText = m; errDiv.style.display = 'block'; }
 
-    // --- データ処理 ---
+    // --- データ ---
     async function loadCloudData() {
         if(!auth.currentUser) return;
-        try {
-            const snap = await db.collection('users').doc(auth.currentUser.uid).collection('diaries').get();
-            cachedDiaries = snap.docs.map(doc => doc.data());
-            renderCalendar();
-        } catch(e) { log("Sync Error"); }
+        const snap = await db.collection('users').doc(auth.currentUser.uid).collection('diaries').get();
+        cachedDiaries = snap.docs.map(doc => doc.data());
+        renderCalendar();
     }
 
     function renderCalendar() {
         const grid = document.getElementById('calendar-grid');
         grid.innerHTML = "";
-        const year = currentViewDate.getFullYear();
-        const month = currentViewDate.getMonth();
-        document.getElementById('current-month-display').innerText = `${year}年 ${month + 1}月`;
+        const y = currentViewDate.getFullYear(), m = currentViewDate.getMonth();
+        document.getElementById('current-month-display').innerText = `${y}年 ${m + 1}月`;
         
         ['日','月','火','水','木','金','土'].forEach(l => {
             const el = document.createElement('div'); el.className = 'day-label'; el.innerText = l; grid.appendChild(el);
         });
 
-        const firstDay = new Date(year, month, 1).getDay();
-        const lastDate = new Date(year, month + 1, 0).getDate();
-        for (let i = 0; i < firstDay; i++) grid.appendChild(document.createElement('div'));
+        const first = new Date(y, m, 1).getDay(), last = new Date(y, m + 1, 0).getDate();
+        for (let i = 0; i < first; i++) grid.appendChild(document.createElement('div'));
 
-        let monthlyTotal = 0;
-        const nowStr = new Date().toLocaleDateString('sv-SE');
+        let total = 0;
+        const now = new Date().toLocaleDateString('sv-SE');
 
-        for (let d = 1; d <= lastDate; d++) {
-            const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
-            const dayEl = document.createElement('div'); dayEl.className = 'day';
-            if (nowStr === dateStr) dayEl.classList.add('is-today');
-            dayEl.innerHTML = `<div class="day-num">${d}</div>`;
+        for (let d = 1; d <= last; d++) {
+            const ds = `${y}-${(m + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
+            const el = document.createElement('div'); el.className = 'day';
+            if (now === ds) el.classList.add('is-today');
+            el.innerHTML = `<div class="day-num">${d}</div>`;
             
-            const record = cachedDiaries.find(item => item.date === dateStr);
-            if (record) {
-                const typeClass = getColorClass(record.type);
-                dayEl.innerHTML += `<div class="cal-record ${typeClass}"><b>${record.dist}k</b><br>${record.weather||''}</div>`;
-                monthlyTotal += parseFloat(record.dist || 0);
+            const rec = cachedDiaries.find(r => r.date === ds);
+            if (rec) {
+                const cls = {'ジョグ':'bg-jog','タイムトライアル':'bg-tt','レスト':'bg-rest'}[rec.type] || 'bg-jog';
+                el.innerHTML += `<div class="cal-record ${cls}"><b>${rec.dist}k</b><br>${rec.weather||''}</div>`;
+                total += parseFloat(rec.dist || 0);
             }
-            dayEl.onclick = () => openModal(dateStr);
-            grid.appendChild(dayEl);
+            el.onclick = () => openModal(ds);
+            grid.appendChild(el);
         }
-        document.getElementById('month-total-val').innerText = monthlyTotal.toFixed(2);
+        document.getElementById('month-total-val').innerText = total.toFixed(2);
+    }
+
+    function calcJog() {
+        const s = document.getElementById('start-time').value, e = document.getElementById('jog-end-time').value;
+        const dInput = document.getElementById('jog-dist'), mInput = document.getElementById('jog-min');
+
+        if(s && e) {
+            const [sH, sM] = s.split(':').map(Number), [eH, eM] = e.split(':').map(Number);
+            let diff = (eH * 60 + eM) - (sH * 60 + sM);
+            if(diff < 0) diff += 1440;
+            mInput.value = diff;
+        }
+        const d = parseFloat(dInput.value), m = parseFloat(mInput.value);
+        if(d > 0 && m > 0) {
+            const ps = (m * 60) / d;
+            document.getElementById('jog-res').innerText = `ペース: ${Math.floor(ps/60)}:${Math.round(ps%60).toString().padStart(2,'0')}/km`;
+        }
     }
 
     function toggleMenuFields() {
@@ -272,39 +272,11 @@
         if(target) document.getElementById(target).style.display = 'block';
     }
 
-    function calcJog() {
-        const start = document.getElementById('start-time').value;
-        const end = document.getElementById('jog-end-time').value;
-        const distInput = document.getElementById('jog-dist');
-        const minInput = document.getElementById('jog-min');
-
-        // 時刻からの自動計算
-        if(start && end) {
-            const [sH, sM] = start.split(':').map(Number);
-            const [eH, eM] = end.split(':').map(Number);
-            let diff = (eH * 60 + eM) - (sH * 60 + sM);
-            if(diff < 0) diff += 1440; // 日またぎ対応
-            minInput.value = diff;
-        }
-
-        const d = parseFloat(distInput.value);
-        const m = parseFloat(minInput.value);
-        if(d > 0 && m > 0) {
-            const paceSec = (m * 60) / d;
-            document.getElementById('jog-res').innerText = `ペース: ${Math.floor(paceSec/60)}:${Math.round(paceSec%60).toString().padStart(2,'0')}/km`;
-        }
-    }
-
-    function getColorClass(type) {
-        return {'ジョグ':'bg-jog', 'タイムトライアル':'bg-tt', 'レスト':'bg-rest'}[type] || 'bg-jog';
-    }
-
-    function openModal(dateStr) {
-        selectedDateStr = dateStr;
-        document.getElementById('modal-date-title').innerText = dateStr.replace(/-/g, '/');
-        const rec = cachedDiaries.find(r => r.date === dateStr);
+    function openModal(ds) {
+        selectedDateStr = ds;
+        document.getElementById('modal-date-title').innerText = ds.replace(/-/g, '/');
+        const rec = cachedDiaries.find(r => r.date === ds);
         document.getElementById('delete-btn').style.display = rec ? 'block' : 'none';
-        
         if(rec) {
             document.getElementById('menu-select').value = rec.type;
             document.getElementById('start-time').value = rec.time || "17:00";
@@ -322,10 +294,8 @@
     function searchTT() {
         const q = parseFloat(document.getElementById('search-query').value);
         const resDiv = document.getElementById('search-results');
-        const filtered = cachedDiaries.filter(d => d.type === 'タイムトライアル' && (!q || parseFloat(d.dist) === q));
-        resDiv.innerHTML = filtered.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(d => 
-            `<div style="padding:12px; border-bottom:1px solid #eee;"><b>${d.date}</b>: ${d.dist}km [${d.ttTime}]</div>`
-        ).join('');
+        const fil = cachedDiaries.filter(d => d.type === 'タイムトライアル' && (!q || parseFloat(d.dist) === q));
+        resDiv.innerHTML = fil.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(d => `<div style="padding:12px; border-bottom:1px solid #eee;"><b>${d.date}</b>: ${d.dist}km [${d.ttTime}]</div>`).join('');
     }
 
     async function deleteDiary() {
@@ -347,8 +317,7 @@
             ttTime = `${document.getElementById('tt-min').value}:${document.getElementById('tt-sec').value.padStart(2,'0')}.${document.getElementById('tt-msec').value}`;
             detail = `TT: ${ttTime}`;
         } else if (menu === 'レストトレーニング') {
-            const d = parseFloat(document.getElementById('rt-dist').value)||0;
-            const c = parseFloat(document.getElementById('rt-count').value)||0;
+            const d = parseFloat(document.getElementById('rt-dist').value)||0, c = parseFloat(document.getElementById('rt-count').value)||0;
             dist = (d * c) / 1000;
             detail = `${d}m×${c} (T:${document.getElementById('rt-time').value}s / R:${document.getElementById('rt-rest').value}s)`;
         } else if (menu === 'インターバル') {
@@ -356,23 +325,28 @@
         }
 
         const btn = document.getElementById('save-btn');
-        btn.innerText = "天気取得＆保存中..."; btn.disabled = true;
+        btn.disabled = true; btn.innerText = "保存中...";
 
-        let weather = "☁️--";
+        let w = "☁️--";
         try {
-            const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:3000}));
-            const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&hourly=weathercode,temperature_2m&start_date=${selectedDateStr}&end_date=${selectedDateStr}&timezone=Asia%2FTokyo`);
-            const wData = await wRes.json();
+            const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:2000}));
+            const wr = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&hourly=weathercode,temperature_2m&start_date=${selectedDateStr}&end_date=${selectedDateStr}&timezone=Asia%2FTokyo`);
+            const wd = await wr.json();
             const h = parseInt(document.getElementById('start-time').value.split(':')[0]);
-            const icons = {0:"☀️",1:"🌤️",2:"⛅",3:"☁️",61:"☔",95:"⚡"};
-            weather = (icons[wData.hourly.weathercode[h]] || "☁️") + Math.round(wData.hourly.temperature_2m[h]) + "℃";
-        } catch(e) { log("Weather Skip"); }
+            w = ({0:"☀️",1:"🌤️",2:"⛅",3:"☁️",61:"☔",95:"⚡"}[wd.hourly.weathercode[h]] || "☁️") + Math.round(wd.hourly.temperature_2m[h]) + "℃";
+        } catch(e) {}
 
-        const data = {
+        await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDateStr).set({
             date: selectedDateStr, type: menu, dist: dist.toFixed(2), detail: detail, 
-            weather: weather, ttTime: ttTime, memo: document.getElementById('common-memo').value,
+            weather: w, ttTime: ttTime, memo: document.getElementById('common-memo').value,
             time: document.getElementById('start-time').value
-        };
+        });
+        btn.disabled = false; btn.innerText = "保存";
+        closeModal(); loadCloudData();
+    }
 
-        try {
-            await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selected
+    document.getElementById('logout-btn').onclick = () => auth.signOut();
+    window.onload = () => { if(auth.currentUser) loadCloudData(); else renderCalendar(); };
+</script>
+</body>
+</html>
