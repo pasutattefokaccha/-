@@ -33,6 +33,7 @@
         .bg-other { background-color: #e0f7fa; color: #00838f; }
 
         .search-fab { position: fixed; right: 20px; bottom: 20px; width: 60px; height: 60px; background: var(--primary); color: white; border-radius: 30px; display: flex; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; z-index: 90; }
+        .add-fab { position: fixed; right: 90px; bottom: 20px; width: 60px; height: 60px; background: #34c759; color: white; border-radius: 30px; display: flex; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; z-index: 90; }
 
         #entry-modal, #search-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; overflow-y: auto; }
         .modal-content { background: white; margin: 5% auto; width: 90%; max-width: 450px; padding: 20px; border-radius: 20px; }
@@ -62,6 +63,7 @@
     <div class="calendar" id="calendar-grid"></div>
 </div>
 
+<button class="add-fab" id="fab-add" onclick="openModal(new Date().toISOString().split('T')[0])">＋</button>
 <button class="search-fab" id="fab-search" onclick="openSearch()">🔍</button>
 
 <div id="entry-modal">
@@ -214,7 +216,6 @@
         const m = parseFloat(document.getElementById('jog-min').value);
         const startTime = document.getElementById('start-time').value;
 
-        // ペース計算
         if(d > 0 && m > 0) {
             const paceSec = (m * 60) / d;
             const min = Math.floor(paceSec / 60);
@@ -222,7 +223,6 @@
             document.getElementById('jog-res').innerText = `平均ペース: ${min}:${sec.toString().padStart(2,'0')}/km`;
         }
 
-        // 終了時刻の自動計算
         if(startTime && m > 0) {
             const [h, min] = startTime.split(':').map(Number);
             const date = new Date();
@@ -263,6 +263,11 @@
             document.getElementById('menu-select').value = record.type;
             if (record.type === 'ジョグ') {
                 document.getElementById('jog-dist').value = record.dist;
+            } else if (record.type === 'インターバル' || record.type === 'レスト') {
+                const parts = record.detail.split('k×');
+                document.getElementById('int-dist').value = parts[0];
+                document.getElementById('int-count').value = parts[1];
+                calcInt();
             } else if (record.type === 'タイムトライアル') {
                 document.getElementById('tt-dist-km').value = record.dist;
                 if(record.ttTime) {
@@ -271,6 +276,14 @@
                     document.getElementById('tt-sec').value = t[1] || "";
                     document.getElementById('tt-msec').value = t[2] || "";
                 }
+            } else if (record.type === 'ペース走') {
+                document.getElementById('pace-dist').value = record.dist;
+                document.getElementById('pace-val').value = record.detail.replace('ペース走: ', '');
+            } else if (record.type === 'ビルドアップ') {
+                document.getElementById('bu-dist').value = record.dist;
+                const buParts = record.detail.replace('BU: ', '').split('〜');
+                document.getElementById('bu-start').value = buParts[0];
+                document.getElementById('bu-end').value = buParts[1];
             } else if (record.type === 'その他') {
                 document.getElementById('other-dist').value = record.dist;
                 document.getElementById('other-content').value = record.detail;
@@ -282,6 +295,7 @@
         
         document.getElementById('entry-modal').style.display = 'block';
         toggleMenuFields();
+        if(record && record.type === 'ジョグ') calcJog();
     }
 
     function closeModal() { document.getElementById('entry-modal').style.display = 'none'; }
