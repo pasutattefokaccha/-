@@ -51,8 +51,8 @@
         <h2 style="color:var(--primary)">RUN DIARY</h2>
         <input type="email" id="email" placeholder="メールアドレス">
         <input type="password" id="password" placeholder="パスワード">
-        <button onclick="handleLogin()" class="btn" style="background:var(--primary); color:white;">ログイン</button>
-        <button onclick="handleSignup()" class="btn" style="background:#5856d6; color:white;">新規登録</button>
+        <button onclick="handleLogin()" id="login-btn" class="btn" style="background:var(--primary); color:white;">ログイン</button>
+        <button onclick="handleSignup()" id="signup-btn" class="btn" style="background:#5856d6; color:white;">新規登録</button>
     </div>
 </div>
 
@@ -159,12 +159,11 @@
 <script>
     const log = (m) => { document.getElementById('system-monitor').innerText = "Status: " + m; };
 
-    // Firebaseコンソールのスクショ(1000002154.png)に基づく最新設定
     const firebaseConfig = {
         apiKey: "AIzaSyC0VeVEdEpcRP8dOvJokXq0lg2gBzloVls",
         authDomain: "runnikki-a7d37.firebaseapp.com",
         projectId: "runnikki-a7d37",
-        storageBucket: "runnikki-a7d37.appspot.com", // 修正
+        storageBucket: "runnikki-a7d37.appspot.com",
         messagingSenderId: "623990853537",
         appId: "1:623990853537:web:68417f21002106b5c745e0"
     };
@@ -172,41 +171,44 @@
     let auth, db;
     let cachedDiaries = [], selectedDate = "", currentViewDate = new Date();
 
-    // 初期化プロセスを明確化
-    try {
-        firebase.initializeApp(firebaseConfig);
-        auth = firebase.auth();
-        db = firebase.firestore();
-        log("Firebase Initialized");
-    } catch(e) {
-        log("Init Error: " + e.message);
-    }
-
-    // 認証状態の監視
-    if (auth) {
-        auth.onAuthStateChanged(user => {
-            if (user) { 
-                log("Ready: " + user.email); 
-                document.getElementById('auth-container').classList.add('hidden'); 
-                document.getElementById('app-container').classList.remove('hidden'); 
-                loadData(); 
-            } else { 
-                log("Waiting Login..."); 
-                document.getElementById('auth-container').classList.remove('hidden'); 
-                document.getElementById('app-container').classList.add('hidden'); 
+    // 初期化を即座に実行せず、画面が出てから行う
+    window.addEventListener('load', () => {
+        try {
+            if (typeof firebase !== 'undefined') {
+                firebase.initializeApp(firebaseConfig);
+                auth = firebase.auth();
+                db = firebase.firestore();
+                log("Ready to Action");
+                
+                auth.onAuthStateChanged(user => {
+                    if (user) { 
+                        log("Logged in: " + user.email); 
+                        document.getElementById('auth-container').classList.add('hidden'); 
+                        document.getElementById('app-container').classList.remove('hidden'); 
+                        loadData(); 
+                    } else { 
+                        log("Waiting for Login..."); 
+                        document.getElementById('auth-container').classList.remove('hidden'); 
+                        document.getElementById('app-container').classList.add('hidden'); 
+                    }
+                });
+            } else {
+                log("Error: Firebase SDK not found.");
             }
-        });
-    }
+        } catch(e) {
+            log("Init Error: " + e.message);
+        }
+    });
 
     async function handleLogin() {
         const e = document.getElementById('email').value.trim();
         const p = document.getElementById('password').value.trim();
-        if(!e || !p) return;
-        log("Logging in...");
+        if(!e || !p || !auth) return;
+        log("Checking...");
         try {
             await auth.signInWithEmailAndPassword(e, p);
         } catch(err) {
-            log("Error: " + err.code);
+            log("Fail: " + err.code);
             alert("ログイン失敗: " + err.message);
         }
     }
@@ -214,25 +216,26 @@
     async function handleSignup() {
         const e = document.getElementById('email').value.trim();
         const p = document.getElementById('password').value.trim();
-        if(!e || !p) return;
-        log("Signing up...");
+        if(!e || !p || !auth) return;
+        log("Creating account...");
         try {
             await auth.createUserWithEmailAndPassword(e, p);
         } catch(err) {
-            log("Error: " + err.code);
+            log("Fail: " + err.code);
             alert("登録失敗: " + err.message);
         }
     }
 
+    // --- 以下、データ処理系の関数（変更なし） ---
     async function loadData() {
         if(!auth.currentUser) return;
         try {
             const snap = await db.collection('users').doc(auth.currentUser.uid).collection('diaries').get();
             cachedDiaries = snap.docs.map(doc => doc.data());
             renderCalendar();
-            log("Data Loaded (" + cachedDiaries.length + ")");
+            log("Data Sync OK");
         } catch(e) {
-            log("Firestore Error: " + e.message);
+            log("Sync Error: " + e.message);
         }
     }
 
@@ -327,10 +330,4 @@
         res.sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(r => { body.innerHTML += `<tr><td>${r.date}</td><td>${r.dist}km</td><td>${r.detail}</td></tr>`; });
     }
 
-    async function deleteDiary() { if(confirm("削除しますか？")) { await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDate).delete(); closeModal(); loadData(); } }
-
-    async function saveDiary() {
-        const btn = document.getElementById('save-btn'); btn.disabled = true; btn.innerText = "取得中...";
-        const menu = document.getElementById('menu-select').value;
-        let dist = 0, detail = "";
-        if(menu==='ジョグ') { dist = parseFloat(document.getElementBy
+    async function deleteDiary() { if(confirm("削除しますか？")) { await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDate).delete(); closeModal();
