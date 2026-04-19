@@ -66,7 +66,7 @@
         <button id="auth-btn" class="btn" style="background:var(--primary); color:white;">ログイン / 新規登録</button>
         <div id="auth-error"></div>
     </div>
-    <div class="version-tag">ver 1.0.4 (Login Fix)</div>
+    <div class="version-tag">ver 1.1.4</div>
 </div>
 
 <div id="app-container" class="container hidden">
@@ -179,8 +179,8 @@
     const authBtn = document.getElementById('auth-btn');
     const errDiv = document.getElementById('auth-error');
 
-    // ログイン処理の再修正
-    authBtn.onclick = async () => {
+    // ログイン処理を完全に非同期で制御
+    async function handleAuth() {
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
         errDiv.style.display = 'none';
@@ -191,28 +191,28 @@
         }
 
         authBtn.disabled = true;
-        authBtn.innerText = "認証中...";
+        authBtn.innerText = "通信中...";
 
         try {
-            // まずログインを試行
+            // ログイン試行
             await auth.signInWithEmailAndPassword(email, password);
         } catch (err) {
-            console.error(err.code);
-            // ユーザーが存在しない、または特定のログインエラーの場合に新規登録を試行
-            if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-login-credentials') {
-                try {
-                    await auth.createUserWithEmailAndPassword(email, password);
-                } catch (regErr) {
-                    showError("認証に失敗しました: " + regErr.message);
-                }
-            } else {
-                showError("エラー: " + err.message);
+            console.warn("Sign in failed, attempting registration...", err.code);
+            // 失敗した場合は即座に新規登録を試行
+            try {
+                await auth.createUserWithEmailAndPassword(email, password);
+            } catch (regErr) {
+                console.error("Auth process error:", regErr.code);
+                showError("認証失敗: " + regErr.message);
             }
         } finally {
             authBtn.disabled = false;
             authBtn.innerText = "ログイン / 新規登録";
         }
-    };
+    }
+
+    // イベントリスナーとして登録
+    authBtn.addEventListener('click', handleAuth);
 
     auth.onAuthStateChanged(user => {
         if (user) {
@@ -233,9 +233,7 @@
             const snap = await db.collection('users').doc(auth.currentUser.uid).collection('diaries').get();
             cachedDiaries = snap.docs.map(doc => doc.data());
             renderCalendar();
-        } catch (e) {
-            console.error("Data Load Error", e);
-        }
+        } catch (e) { console.error("Data Load Error", e); }
     }
 
     function renderCalendar() {
@@ -334,7 +332,7 @@
     }
 
     async function deleteDiary() {
-        if(confirm("この日の記録を完全に削除しますか？\n(変更したい場合は削除してから再入力してください)")) {
+        if(confirm("この日の記録を完全に削除しますか？")) {
             await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDateStr).delete();
             closeModal(); loadCloudData();
         }
@@ -355,4 +353,6 @@
             dist = (d * c) / 1000;
             detail = `${d}m×${c} (T:${document.getElementById('rt-time').value}s / R:${document.getElementById('rt-rest').value}s)`;
         } else if (menu === 'インターバル') {
-            detail = `
+            detail = `${document.getElementById('int-dist-v2').value} / ${document.getElementById('int-time-v2').value}`;
+        }
+        const btn = document.getE
