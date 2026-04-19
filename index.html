@@ -37,8 +37,6 @@
         .bg-jog { background: #e3f2fd; border-left-color: #1565c0; } .bg-tt { background: #fffde7; border-left-color: #f9a825; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; } th, td { padding: 10px; border-bottom: 1px solid #eee; font-size: 0.8rem; }
         .hidden { display: none !important; }
-        
-        /* 閲覧モード用 */
         .view-label { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 2px; }
         .view-value { font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; }
         .view-memo { background: #f4f4f4; padding: 15px; border-radius: 12px; font-size: 0.95rem; line-height: 1.5; white-space: pre-wrap; margin-bottom: 15px; }
@@ -77,25 +75,19 @@
 <div id="entry-modal" class="modal">
     <div class="modal-content">
         <h3 id="modal-date-title" style="margin-top:0; color:var(--primary)"></h3>
-        
         <div id="modal-view-mode">
             <div class="view-label">メニュー / 開始時間</div>
             <div class="view-value"><span id="view-type"></span> <span id="view-time" style="font-size:0.85rem; font-weight:normal;"></span></div>
-            
             <div class="view-label">天気 / 気温</div>
             <div class="view-value" id="view-weather">--</div>
-            
             <div id="view-detail-area">
                 <div class="view-label">距離 / 内容</div>
                 <div class="view-value"><span id="view-dist"></span>km - <span id="view-detail" style="font-size:0.9rem;"></span></div>
             </div>
-            
             <div class="view-label">メモ・感想</div>
             <div class="view-memo" id="view-memo"></div>
-            
             <button class="btn btn-edit" onclick="enableEditMode()">編集する</button>
         </div>
-
         <div id="modal-edit-mode" class="hidden">
             <input type="time" id="start-time" value="17:00">
             <select id="menu-select" onchange="switchFields()">
@@ -107,51 +99,15 @@
                 <option value="ビルドアップ">ビルドアップ</option>
                 <option value="レスト">レスト(完全休養)</option>
             </select>
-
-            <div id="sect-jog" class="menu-sect dynamic-section">
-                <input type="number" id="jog-dist" step="0.01" placeholder="距離 (km)" oninput="calcJog()">
-                <input type="number" id="jog-min" placeholder="走行時間 (分)" oninput="calcJog()">
-                <div id="jog-res" class="res-preview">ペース: --:--/km</div>
-            </div>
-
-            <div id="sect-int" class="menu-sect dynamic-section" style="display:none;">
-                <input type="text" id="int-dist-v2" placeholder="距離 (例: 400m)">
-                <input type="text" id="int-time-v2" placeholder="タイム (例: 72秒)">
-                <input type="text" id="int-connect-v2" placeholder="つなぎ (例: 200m または 60秒)">
-            </div>
-
-            <div id="sect-rest-tr" class="menu-sect dynamic-section" style="display:none;">
-                <input type="number" id="rt-dist" placeholder="何m">
-                <input type="number" id="rt-count" placeholder="何本">
-                <input type="number" id="rt-rest" placeholder="休憩何秒">
-                <input type="number" id="rt-time" placeholder="タイム何秒">
-            </div>
-
-            <div id="sect-tt" class="menu-sect dynamic-section" style="display:none;">
-                <input type="number" id="tt-dist" placeholder="距離 (km)">
-                <div style="display:flex; gap:5px; align-items:center;">
-                    <input type="number" id="tt-min" placeholder="分" style="width:30%">:
-                    <input type="number" id="tt-sec" placeholder="秒" style="width:30%">.
-                    <input type="number" id="tt-msec" placeholder="0" style="width:20%">
-                </div>
-            </div>
-
-            <div id="sect-pace" class="menu-sect dynamic-section" style="display:none;">
-                <input type="number" id="pace-dist" placeholder="距離 (km)" oninput="calcPaceTime()">
-                <input type="text" id="pace-val" placeholder="設定ペース (例: 4:15)" oninput="calcPaceTime()">
-                <div id="pace-res" class="res-preview">合計走行時間: --分--秒</div>
-            </div>
-
-            <div id="sect-bu" class="menu-sect dynamic-section" style="display:none;">
-                <input type="number" id="bu-dist" placeholder="距離 (km)">
-                <input type="text" id="bu-start" placeholder="開始ペース">
-                <input type="text" id="bu-end" placeholder="終了ペース">
-            </div>
-
+            <div id="sect-jog" class="menu-sect dynamic-section"><input type="number" id="jog-dist" step="0.01" placeholder="距離 (km)" oninput="calcJog()"><input type="number" id="jog-min" placeholder="走行時間 (分)" oninput="calcJog()"><div id="jog-res" class="res-preview">ペース: --:--/km</div></div>
+            <div id="sect-int" class="menu-sect dynamic-section" style="display:none;"><input type="text" id="int-dist-v2" placeholder="距離 (例: 400m)"><input type="text" id="int-time-v2" placeholder="タイム (例: 72秒)"><input type="text" id="int-connect-v2" placeholder="つなぎ (例: 200m または 60秒)"></div>
+            <div id="sect-rest-tr" class="menu-sect dynamic-section" style="display:none;"><input type="number" id="rt-dist" placeholder="何m"><input type="number" id="rt-count" placeholder="何本"><input type="number" id="rt-rest" placeholder="休憩何秒"><input type="number" id="rt-time" placeholder="タイム何秒"></div>
+            <div id="sect-tt" class="menu-sect dynamic-section" style="display:none;"><input type="number" id="tt-dist" placeholder="距離 (km)"><div style="display:flex; gap:5px; align-items:center;"><input type="number" id="tt-min" placeholder="分" style="width:30%">:<input type="number" id="tt-sec" placeholder="秒" style="width:30%">.<input type="number" id="tt-msec" placeholder="0" style="width:20%"></div></div>
+            <div id="sect-pace" class="menu-sect dynamic-section" style="display:none;"><input type="number" id="pace-dist" placeholder="距離 (km)" oninput="calcPaceTime()"><input type="text" id="pace-val" placeholder="設定ペース (例: 4:15)" oninput="calcPaceTime()"><div id="pace-res" class="res-preview">合計走行時間: --分--秒</div></div>
+            <div id="sect-bu" class="menu-sect dynamic-section" style="display:none;"><input type="number" id="bu-dist" placeholder="距離 (km)"><input type="text" id="bu-start" placeholder="開始ペース"><input type="text" id="bu-end" placeholder="終了ペース"></div>
             <textarea id="common-memo" placeholder="メモ・感想" rows="3"></textarea>
             <button class="btn btn-save" id="save-btn" onclick="saveDiary()">保存 (天気を取得)</button>
         </div>
-        
         <button class="btn btn-delete hidden" id="delete-btn" onclick="deleteDiary()" style="background:var(--danger); color:white; margin-top:15px;">削除</button>
         <button class="btn" style="background:#eee;" onclick="closeModal()">閉じる</button>
     </div>
@@ -162,23 +118,20 @@
         <h3>TT記録検索</h3>
         <input type="number" id="search-dist" placeholder="検索する距離 (km)">
         <button class="btn" style="background:var(--primary); color:white;" onclick="runSearch()">検索</button>
-        <div style="max-height:300px; overflow-y:auto; margin-top:15px;">
-            <table id="search-table"><thead><tr><th>日付</th><th>距離</th><th>記録</th></tr></thead><tbody id="search-body"></tbody></table>
-        </div>
+        <div style="max-height:300px; overflow-y:auto; margin-top:15px;"><table id="search-table"><thead><tr><th>日付</th><th>距離</th><th>記録</th></tr></thead><tbody id="search-body"></tbody></table></div>
         <button class="btn" style="background:#eee;" onclick="closeSearch()">閉じる</button>
     </div>
 </div>
 
 <script>
     const log = (m) => { document.getElementById('system-monitor').innerText = "Status: " + m; };
-    // --- 重要: プロジェクト設定を固定 ---
-    const firebaseConfig = { 
-        apiKey: "AIzaSyC0VeVEdEpcRP8dOvJokXq0lg2gBzloVls", 
-        authDomain: "runnikki-a7d37.firebaseapp.com", 
-        projectId: "runnikki-a7d37", 
-        storageBucket: "runnikki-a7d37.firebasestorage.app", 
-        messagingSenderId: "623990853537", 
-        appId: "1:623990853537:web:68417f21002106b5c745e0" 
+    const firebaseConfig = {
+        apiKey: "AIzaSyC0VeVEdEpcRP8dOvJokXq0lg2gBzloVls",
+        authDomain: "runnikki-a7d37.firebaseapp.com",
+        projectId: "runnikki-a7d37",
+        storageBucket: "runnikki-a7d37.firebasestorage.app",
+        messagingSenderId: "623990853537",
+        appId: "1:623990853537:web:68417f21002106b5c745e0"
     };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth(); const db = firebase.firestore();
@@ -189,8 +142,8 @@
         else { document.getElementById('auth-container').classList.remove('hidden'); document.getElementById('app-container').classList.add('hidden'); }
     });
 
-    async function handleLogin() { try { await auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value); } catch(e) { alert("ログインエラー: " + e.message); } }
-    async function handleSignup() { try { await auth.createUserWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value); alert("登録完了"); } catch(e) { alert(e.message); } }
+    async function handleLogin() { try { await auth.signInWithEmailAndPassword(document.getElementById('email').value.trim(), document.getElementById('password').value.trim()); } catch(e) { alert("ログイン失敗: " + e.message); } }
+    async function handleSignup() { try { await auth.createUserWithEmailAndPassword(document.getElementById('email').value.trim(), document.getElementById('password').value.trim()); alert("登録完了"); } catch(e) { alert(e.message); } }
 
     async function loadData() {
         if(!auth.currentUser) return;
@@ -226,20 +179,16 @@
     }
 
     function changeMonth(o) { currentViewDate.setMonth(currentViewDate.getMonth() + o); renderCalendar(); }
-    
-    function enableEditMode() {
-        document.getElementById('modal-view-mode').classList.add('hidden');
-        document.getElementById('modal-edit-mode').classList.remove('hidden');
-    }
+    function enableEditMode() { document.getElementById('modal-view-mode').classList.add('hidden'); document.getElementById('modal-edit-mode').classList.remove('hidden'); }
+    function closeModal() { document.getElementById('entry-modal').style.display = 'none'; }
+    function openSearch() { document.getElementById('search-modal').style.display = 'block'; }
+    function closeSearch() { document.getElementById('search-modal').style.display = 'none'; }
 
     function openModal(d) {
         selectedDate = d; document.getElementById('modal-date-title').innerText = d;
         const rec = cachedDiaries.find(r => r.date === d);
-        
         document.getElementById('delete-btn').classList.toggle('hidden', !rec);
-        
         if(rec) {
-            // 閲覧表示
             document.getElementById('modal-view-mode').classList.remove('hidden');
             document.getElementById('modal-edit-mode').classList.add('hidden');
             document.getElementById('view-type').innerText = rec.type;
@@ -252,12 +201,10 @@
                 document.getElementById('view-dist').innerText = rec.dist;
                 document.getElementById('view-detail').innerText = rec.detail || "";
             }
-            // 編集用初期化
             document.getElementById('menu-select').value = rec.type;
             document.getElementById('start-time').value = rec.time || "17:00";
             document.getElementById('common-memo').value = rec.memo || "";
         } else {
-            // 新規
             document.getElementById('modal-view-mode').classList.add('hidden');
             document.getElementById('modal-edit-mode').classList.remove('hidden');
             document.getElementById('menu-select').value = "ジョグ";
@@ -268,10 +215,6 @@
         document.getElementById('entry-modal').style.display = 'block';
         switchFields();
     }
-    
-    function closeModal() { document.getElementById('entry-modal').style.display = 'none'; }
-    function openSearch() { document.getElementById('search-modal').style.display = 'block'; }
-    function closeSearch() { document.getElementById('search-modal').style.display = 'none'; }
 
     function switchFields() {
         const v = document.getElementById('menu-select').value;
@@ -297,28 +240,25 @@
         const d = document.getElementById('search-dist').value;
         const res = cachedDiaries.filter(r => r.type === 'タイムトライアル' && (!d || parseFloat(r.dist) == d));
         const body = document.getElementById('search-body'); body.innerHTML = "";
-        res.sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(r => {
-            body.innerHTML += `<tr><td>${r.date}</td><td>${r.dist}km</td><td>${r.detail}</td></tr>`;
-        });
+        res.sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(r => { body.innerHTML += `<tr><td>${r.date}</td><td>${r.dist}km</td><td>${r.detail}</td></tr>`; });
     }
 
-    async function deleteDiary() { if(confirm("この日の記録を削除しますか？")) { await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDate).delete(); closeModal(); loadData(); } }
+    async function deleteDiary() { if(confirm("削除しますか？")) { await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDate).delete(); closeModal(); loadData(); } }
 
     async function saveDiary() {
         const btn = document.getElementById('save-btn'); btn.disabled = true; btn.innerText = "取得中...";
         const menu = document.getElementById('menu-select').value;
         let dist = 0, detail = "";
+        if(menu==='ジョグ') { dist = parseFloat(document.getElementById('jog-dist').value)||0; detail = `時間:${document.getElementById('jog-min').value}分 / ${document.getElementById('jog-res').innerText}`; }
+        else if(menu==='タイムトライアル') { dist = parseFloat(document.getElementById('tt-dist').value)||0; detail = `${document.getElementById('tt-min').value}:${document.getElementById('tt-sec').value.padStart(2,'0')}.${document.getElementById('tt-msec').value}`; }
+        else if(menu==='インターバル') { detail = `${document.getElementById('int-dist-v2').value} / ${document.getElementById('int-time-v2').value} / R:${document.getElementById('int-connect-v2').value}`; }
+        else if(menu==='レストトレーニング') { detail = `${document.getElementById('rt-dist').value}m×${document.getElementById('rt-count').value} (T:${document.getElementById('rt-time').value} / R:${document.getElementById('rt-rest').value})`; }
+        else if(menu==='ペース走') { dist = parseFloat(document.getElementById('pace-dist').value)||0; detail = `設定:${document.getElementById('pace-val').value} / ${document.getElementById('pace-res').innerText}`; }
+        else if(menu==='ビルドアップ') { dist = parseFloat(document.getElementById('bu-dist').value)||0; detail = `${document.getElementById('bu-start').value} → ${document.getElementById('bu-end').value}`; }
 
-        if(menu==='ジョグ') {
-            dist = parseFloat(document.getElementById('jog-dist').value)||0;
-            detail = `時間:${document.getElementById('jog-min').value}分 / ${document.getElementById('jog-res').innerText}`;
-        } else if(menu==='タイムトライアル') {
-            dist = parseFloat(document.getElementById('tt-dist').value)||0;
-            detail = `${document.getElementById('tt-min').value}:${document.getElementById('tt-sec').value.padStart(2,'0')}.${document.getElementById('tt-msec').value}`;
-        } else if(menu==='インターバル') {
-            detail = `${document.getElementById('int-dist-v2').value} / ${document.getElementById('int-time-v2').value} / R:${document.getElementById('int-connect-v2').value}`;
-        } else if(menu==='レストトレーニング') {
-            detail = `${document.getElementById('rt-dist').value}m×${document.getElementById('rt-count').value} (T:${document.getElementById('rt-time').value} / R:${document.getElementById('rt-rest').value})`;
-        } else if(menu==='ペース走') {
-            dist = parseFloat(document.getElementById('pace-dist').value)||0;
-            detail = `設定:${document.ge
+        let weather = "☁️--";
+        try {
+            const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:3000}));
+            const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&hourly=weathercode,temperature_2m&start_date=${selectedDate}&end_date=${selectedDate}&timezone=Asia%2FTokyo`);
+            const wData = await wRes.json(); const h = parseInt(document.getElementById('start-time').value.split(':')[0]);
+    
