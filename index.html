@@ -13,16 +13,10 @@
         :root { --primary: #007AFF; --bg: #f2f2f7; --card: #ffffff; --today: #fff9c4; --accent: #f9a825; --success: #2ecc71; --danger: #ff3b30; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding-bottom: 80px; }
-        
-        /* 認証 */
         #auth-container { display: flex; align-items: center; justify-content: center; height: 90vh; position: relative; }
         .auth-box { background: white; padding: 30px; border-radius: 25px; width: 85%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         #auth-error { color: var(--danger); font-size: 0.85rem; margin: 15px 0; background: #ffebee; padding: 10px; border-radius: 8px; display: none; text-align: left; }
-        
-        /* バージョン表記 */
         .version-tag { position: absolute; right: 10px; bottom: 10px; font-size: 10px; color: #999; }
-
-        /* メイン */
         .monthly-stats { background: var(--primary); color: white; padding: 20px; border-radius: 20px; margin-bottom: 15px; text-align: center; }
         .monthly-stats-value { font-size: 2.2rem; font-weight: bold; }
         .cal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: white; border-radius: 20px 20px 0 0; }
@@ -31,13 +25,10 @@
         .day { min-height: 90px; padding: 5px; border-right: 1px solid #f0f0f0; border-bottom: 1px solid #f0f0f0; cursor: pointer; position: relative; }
         .day-num { font-size: 0.8rem; font-weight: bold; }
         .is-today { background: var(--today) !important; border: 2px solid var(--accent) !important; z-index: 1; }
-        
         .cal-record { font-size: 0.6rem; margin-top: 4px; padding: 2px 4px; border-radius: 4px; line-height: 1.2; }
         .bg-jog { background-color: #e3f2fd; color: #1565c0; border-left: 3px solid #1565c0; }
         .bg-tt { background-color: #fffde7; color: #f9a825; border-left: 3px solid #1565c0; }
         .bg-rest { background-color: #eeeeee; color: #616161; }
-
-        /* モーダル */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; overflow-y: auto; }
         .modal-content { background: white; margin: 5% auto; width: 92%; max-width: 500px; padding: 25px; border-radius: 25px; box-sizing: border-box; }
         input, select, textarea { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ddd; border-radius: 12px; box-sizing: border-box; font-size: 1rem; }
@@ -45,11 +36,9 @@
         .btn-save { background: var(--success); color: white; }
         .btn-cancel { background: #eee; color: #666; }
         .btn-delete { background: var(--danger); color: white; margin-top: 20px; }
-        
         .fixed-view { background: #f8f9fa; padding: 15px; border-radius: 15px; border: 1px solid #eee; margin-bottom: 15px; }
         .fixed-row { margin-bottom: 8px; font-size: 0.95rem; border-bottom: 1px dashed #ddd; padding-bottom: 4px; }
         .fixed-label { color: #888; font-size: 0.75rem; display: block; }
-        
         .dynamic-section { background: #f0f7ff; padding: 12px; border-radius: 12px; border-left: 4px solid var(--primary); margin: 8px 0; }
         .res-preview { color: var(--primary); font-weight: bold; font-size: 0.9rem; margin-top: 4px; }
         .hidden { display: none !important; }
@@ -61,12 +50,12 @@
 <div id="auth-container">
     <div class="auth-box">
         <h2 style="color:var(--primary)">RUN DIARY</h2>
-        <input type="email" id="email" placeholder="メールアドレス">
-        <input type="password" id="password" placeholder="パスワード">
+        <input type="email" id="email" placeholder="メールアドレス" autocomplete="email">
+        <input type="password" id="password" placeholder="パスワード" autocomplete="current-password">
         <button id="auth-btn" class="btn" style="background:var(--primary); color:white;">ログイン / 新規登録</button>
         <div id="auth-error"></div>
     </div>
-    <div class="version-tag">ver 1.5.4</div>
+    <div class="version-tag">ver 1.6.4</div>
 </div>
 
 <div id="app-container" class="container hidden">
@@ -93,9 +82,7 @@
             <button class="btn btn-delete" onclick="deleteDiary()">この日の記録を削除</button>
         </div>
         <div id="edit-section">
-            <label style="font-size:0.8rem; color:#666;">開始時間</label>
             <input type="time" id="start-time" value="17:00" oninput="calcJog()">
-            <label style="font-size:0.8rem; color:#666;">メニュー</label>
             <select id="menu-select" onchange="toggleMenuFields()">
                 <option value="ジョグ">ジョグ</option>
                 <option value="インターバル">インターバル</option>
@@ -106,7 +93,7 @@
                 <option value="レスト">レスト(完全休養)</option>
             </select>
             <div id="fields-jog" class="dynamic-section">
-                <input type="time" id="jog-end-time" oninput="calcJog()" placeholder="終了時刻">
+                <input type="time" id="jog-end-time" oninput="calcJog()" placeholder="終了">
                 <input type="number" id="jog-dist" step="0.01" placeholder="距離 (km)" oninput="calcJog()">
                 <input type="number" id="jog-min" placeholder="走行時間 (分)" oninput="calcJog()">
                 <div id="jog-res" class="res-preview">ペース: --:--/km</div>
@@ -173,7 +160,7 @@
     let selectedDateStr = "";
     let cachedDiaries = [];
 
-    // --- ログインロジック (実績のあるシンプル版) ---
+    // --- ログインロジック (成功実績のあるフロー) ---
     document.getElementById('auth-btn').onclick = async () => {
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
@@ -187,7 +174,8 @@
         try {
             await auth.signInWithEmailAndPassword(email, password);
         } catch (error) {
-            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-login-credentials' || error.code === 'auth/invalid-credential') {
+            // パスワード間違い以外は新規登録として扱う
+            if (error.code !== 'auth/wrong-password') {
                 try {
                     await auth.createUserWithEmailAndPassword(email, password);
                 } catch (regError) {
@@ -195,7 +183,7 @@
                     errDiv.style.display = 'block';
                 }
             } else {
-                errDiv.innerText = error.message;
+                errDiv.innerText = "パスワードが正しくありません";
                 errDiv.style.display = 'block';
             }
         } finally {
@@ -214,7 +202,7 @@
         }
     });
 
-    // --- メイン機能 ---
+    // --- アプリ機能一式 ---
     async function loadCloudData() {
         if(!auth.currentUser) return;
         try {
@@ -271,7 +259,9 @@
 
     function toggleMenuFields() {
         const m = document.getElementById('menu-select').value;
-        ['fields-jog', 'fields-int', 'fields-rt', 'fields-tt', 'fields-pace', 'fields-bu'].forEach(id => document.getElementById(id).style.display = 'none');
+        ['fields-jog', 'fields-int', 'fields-rt', 'fields-tt', 'fields-pace', 'fields-bu'].forEach(id => {
+            const el = document.getElementById(id); if(el) el.style.display = 'none';
+        });
         const target = {'ジョグ':'fields-jog','インターバル':'fields-int','レストトレーニング':'fields-rt','タイムトライアル':'fields-tt','ペース走':'fields-pace','ビルドアップ':'fields-bu'}[m];
         if(target) document.getElementById(target).style.display = 'block';
     }
@@ -285,19 +275,15 @@
             viewSec.classList.remove('hidden'); editSec.classList.add('hidden');
             document.getElementById('fixed-content').innerHTML = `
                 <div class="fixed-row"><span class="fixed-label">メニュー</span><b>${rec.type}</b></div>
-                <div class="fixed-row"><span class="fixed-label">走行距離</span><b>${rec.dist} km</b></div>
-                <div class="fixed-row"><span class="fixed-label">開始時間 / 天気</span>${rec.time || '--:--'} / ${rec.weather || '--'}</div>
+                <div class="fixed-row"><span class="fixed-label">距離</span><b>${rec.dist} km</b></div>
+                <div class="fixed-row"><span class="fixed-label">時間/天気</span>${rec.time || '--:--'} / ${rec.weather || '--'}</div>
                 <div class="fixed-row"><span class="fixed-label">詳細</span>${rec.detail || 'なし'}</div>
                 <div class="fixed-row" style="border:none;"><span class="fixed-label">メモ</span>${rec.memo || '-'}</div>`;
         } else {
             viewSec.classList.add('hidden'); editSec.classList.remove('hidden');
             document.getElementById('menu-select').value = "ジョグ";
-            document.getElementById('start-time').value = "17:00";
-            document.getElementById('jog-end-time').value = "";
-            document.getElementById('jog-dist').value = "";
-            document.getElementById('jog-min').value = "";
-            document.getElementById('common-memo').value = "";
-            document.getElementById('jog-res').innerText = "ペース: --:--/km";
+            document.getElementById('jog-dist').value = ""; document.getElementById('jog-min').value = "";
+            document.getElementById('common-memo').value = ""; document.getElementById('jog-res').innerText = "ペース: --:--/km";
             toggleMenuFields();
         }
         document.getElementById('entry-modal').style.display = 'block';
@@ -316,7 +302,7 @@
     }
 
     async function deleteDiary() {
-        if(confirm("この日の記録を完全に削除しますか？")) {
+        if(confirm("削除しますか？")) {
             await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDateStr).delete();
             closeModal(); loadCloudData();
         }
@@ -338,10 +324,16 @@
             detail = `${d}m×${c} (T:${document.getElementById('rt-time').value}s / R:${document.getElementById('rt-rest').value}s)`;
         } else if (menu === 'インターバル') {
             detail = `${document.getElementById('int-dist-v2').value} / ${document.getElementById('int-time-v2').value}`;
+        } else if (menu === 'ペース走') {
+            dist = parseFloat(document.getElementById('pace-dist').value) || 0;
+            detail = `Pace: ${document.getElementById('pace-val').value}`;
+        } else if (menu === 'ビルドアップ') {
+            dist = parseFloat(document.getElementById('bu-dist').value) || 0;
+            detail = `BU: ${document.getElementById('bu-start').value}→${document.getElementById('bu-end').value}`;
         }
+        
         const btn = document.getElementById('save-btn');
         btn.disabled = true; btn.innerText = "保存中...";
         let w = "☁️--";
         try {
-            const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:2000}));
-            con
+            const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosi
