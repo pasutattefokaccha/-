@@ -68,7 +68,7 @@
     <div class="modal-content">
         <h3 id="modal-date-title"></h3>
         <label>走行時間</label>
-        <div style="display:flex; gap:10px;"><input type="time" id="start-time"><span>〜</span><input type="time" id="end-time"></div>
+        <div style="display:flex; gap:10px;"><input type="time" id="start-time" oninput="calcJog()"><span>〜</span><input type="time" id="end-time"></div>
         <label>メニュー</label>
         <select id="menu-select" onchange="toggleMenuFields()">
             <option value="ジョグ">ジョグ</option>
@@ -144,7 +144,6 @@
     let selectedDateStr = "";
     let cachedDiaries = [];
 
-    // HTMLの読み込み完了後にデータを取得して描画を開始する
     window.addEventListener('DOMContentLoaded', () => {
         loadCloudData();
     });
@@ -213,11 +212,26 @@
     function calcJog() {
         const d = parseFloat(document.getElementById('jog-dist').value);
         const m = parseFloat(document.getElementById('jog-min').value);
+        const startTime = document.getElementById('start-time').value;
+
+        // ペース計算
         if(d > 0 && m > 0) {
             const paceSec = (m * 60) / d;
             const min = Math.floor(paceSec / 60);
             const sec = Math.round(paceSec % 60);
             document.getElementById('jog-res').innerText = `平均ペース: ${min}:${sec.toString().padStart(2,'0')}/km`;
+        }
+
+        // 終了時刻の自動計算
+        if(startTime && m > 0) {
+            const [h, min] = startTime.split(':').map(Number);
+            const date = new Date();
+            date.setHours(h);
+            date.setMinutes(min + m);
+            
+            const endH = date.getHours().toString().padStart(2, '0');
+            const endM = date.getMinutes().toString().padStart(2, '0');
+            document.getElementById('end-time').value = `${endH}:${endM}`;
         }
     }
 
