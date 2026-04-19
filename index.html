@@ -149,7 +149,14 @@
 
 <script>
     const log = (m) => { document.getElementById('system-monitor').innerText = "Status: " + m; };
-    const firebaseConfig = { apiKey: "AIzaSyC0VeVEdEpcRP8dOvJokXq0lg2gBzloVls", authDomain: "runnikki-a7d37.firebaseapp.com", projectId: "runnikki-a7d37", storageBucket: "runnikki-a7d37.firebasestorage.app", messagingSenderId: "623990853537", appId: "1:623990853537:web:68417f21002106b5c745e0" };
+    const firebaseConfig = { 
+        apiKey: "AIzaSyC0VeVEdEpcRP8dOvJokXq0lg2gBzloVls", 
+        authDomain: "runnikki-a7d37.firebaseapp.com", 
+        projectId: "runnikki-a7d37", 
+        storageBucket: "runnikki-a7d37.firebasestorage.app", 
+        messagingSenderId: "623990853537", 
+        appId: "1:623990853537:web:68417f21002106b5c745e0" 
+    };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth(); const db = firebase.firestore();
     let cachedDiaries = [], selectedDate = "", currentViewDate = new Date();
@@ -163,6 +170,7 @@
     async function handleSignup() { try { await auth.createUserWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value); alert("完了"); } catch(e) { alert(e.message); } }
 
     async function loadData() {
+        if(!auth.currentUser) return;
         const snap = await db.collection('users').doc(auth.currentUser.uid).collection('diaries').get();
         cachedDiaries = snap.docs.map(doc => doc.data());
         renderCalendar();
@@ -176,14 +184,17 @@
         const first = new Date(y, m, 1).getDay(), last = new Date(y, m + 1, 0).getDate();
         for(let i=0; i<first; i++) grid.appendChild(document.createElement('div'));
         let total = 0;
+        const nowStr = new Date().toISOString().split('T')[0];
         for(let d=1; d<=last; d++) {
             const ds = `${y}-${(m+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
-            const el = document.createElement('div'); el.className = 'day'; el.innerHTML = `<div class="day-num">${d}</div>`;
+            const el = document.createElement('div'); 
+            el.className = 'day' + (ds === nowStr ? ' is-today' : '');
+            el.innerHTML = `<div class="day-num">${d}</div>`;
             const rec = cachedDiaries.find(r => r.date === ds);
             if(rec) {
                 total += parseFloat(rec.dist || 0);
                 const cls = {'ジョグ':'bg-jog','タイムトライアル':'bg-tt'}[rec.type] || '';
-                el.innerHTML += `<div class="cal-record ${cls}"><div style="font-size:0.5rem">${rec.weather||''}</div><div class="rec-dist">${rec.dist}k</div></div>`;
+                el.innerHTML += `<div class="cal-record ${cls}"><div style="font-size:0.55rem">${rec.weather||''}</div><div class="rec-dist">${rec.dist}k</div></div>`;
             }
             el.onclick = () => openModal(ds);
             grid.appendChild(el);
@@ -192,6 +203,7 @@
     }
 
     function changeMonth(o) { currentViewDate.setMonth(currentViewDate.getMonth() + o); renderCalendar(); }
+    
     function switchFields() {
         const v = document.getElementById('menu-select').value;
         document.querySelectorAll('.menu-sect').forEach(s => s.style.display = 'none');
@@ -215,48 +227,62 @@
     function openModal(d) {
         selectedDate = d; document.getElementById('modal-date-title').innerText = d;
         const rec = cachedDiaries.find(r => r.date === d);
-        
-        // 全入力を初期化
-        document.querySelectorAll('input').forEach(i => i.value = "");
-        document.getElementById('start-time').value = "17:00";
-        document.getElementById('common-memo').value = "";
-        document.getElementById('jog-res').innerText = "ペース: --:--/km";
-        document.getElementById('pace-res').innerText = "合計走行時間: --分--秒";
-
         document.getElementById('delete-btn').classList.toggle('hidden', !rec);
-
+        document.getElementById('common-memo').value = rec ? (rec.memo || "") : "";
         if(rec) {
             document.getElementById('menu-select').value = rec.type;
             document.getElementById('start-time').value = rec.time || "17:00";
-            document.getElementById('common-memo').value = rec.memo || "";
+        }
+        document.getElementById('entry-modal').style.display = 'block';
+        switchFields();
+    }
+    
+    function closeModal() { document.getElementById('entry-modal').style.display = 'none'; }
+    function openSearch() { document.getElementById('search-modal').style.display = 'block'; }
+    function closeSearch() { document.getElementById('search-modal').style.display = 'none'; }
 
-            // 各メニューごとの詳細データを復元
-            if(rec.type === 'ジョグ') {
-                document.getElementById('jog-dist').value = rec.dist;
-                document.getElementById('jog-min').value = rec.jog_min || "";
-                calcJog();
-            } else if(rec.type === 'タイムトライアル') {
-                document.getElementById('tt-dist').value = rec.dist;
-                const p = (rec.detail || "0:00.0").split(/[:.]/);
-                document.getElementById('tt-min').value = p[0] || "";
-                document.getElementById('tt-sec').value = p[1] || "";
-                document.getElementById('tt-msec').value = p[2] || "";
-            } else if(rec.type === 'インターバル') {
-                const parts = rec.detail.split(' / ');
-                document.getElementById('int-dist-v2').value = parts[0]?.split(':')[1] || "";
-                document.getElementById('int-time-v2').value = parts[1]?.split(':')[1] || "";
-                document.getElementById('int-connect-v2').value = parts[2]?.split(':')[1] || "";
-            } else if(rec.type === 'レストトレーニング') {
-                const rt = rec.detail.match(/(\d+)m×(\d+) \(T:(\d+)s \/ R:(\d+)s\)/);
-                if(rt) {
-                    document.getElementById('rt-dist').value = rt[1];
-                    document.getElementById('rt-count').value = rt[2];
-                    document.getElementById('rt-time').value = rt[3];
-                    document.getElementById('rt-rest').value = rt[4];
-                }
-            } else if(rec.type === 'ペース走') {
-                document.getElementById('pace-dist').value = rec.dist;
-                document.getElementById('pace-val').value = rec.pace_val || "";
-                calcPaceTime();
-            } else if(rec.type === 'ビルドアップ') {
-                document
+    async function runSearch() {
+        const d = document.getElementById('search-dist').value;
+        const res = cachedDiaries.filter(r => r.type === 'タイムトライアル' && (!d || parseFloat(r.dist) == d));
+        const body = document.getElementById('search-body'); body.innerHTML = "";
+        res.sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(r => {
+            body.innerHTML += `<tr><td>${r.date}</td><td>${r.dist}km</td><td>${r.detail}</td></tr>`;
+        });
+    }
+
+    async function deleteDiary() { if(confirm("消しますか？")) { await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDate).delete(); closeModal(); loadData(); } }
+
+    async function saveDiary() {
+        const btn = document.getElementById('save-btn'); btn.disabled = true;
+        const menu = document.getElementById('menu-select').value;
+        let dist = 0, detail = "";
+
+        if(menu==='ジョグ') dist = parseFloat(document.getElementById('jog-dist').value)||0;
+        else if(menu==='タイムトライアル') {
+            dist = parseFloat(document.getElementById('tt-dist').value)||0;
+            detail = `${document.getElementById('tt-min').value}:${document.getElementById('tt-sec').value.padStart(2,'0')}.${document.getElementById('tt-msec').value}`;
+        } else if(menu==='インターバル') {
+            detail = `距離:${document.getElementById('int-dist-v2').value} / タイム:${document.getElementById('int-time-v2').value} / つなぎ:${document.getElementById('int-connect-v2').value}`;
+        } else if(menu==='レストトレーニング') {
+            detail = `${document.getElementById('rt-dist').value}m×${document.getElementById('rt-count').value} (T:${document.getElementById('rt-time').value}s / R:${document.getElementById('rt-rest').value}s)`;
+        } else if(menu==='ペース走') dist = parseFloat(document.getElementById('pace-dist').value)||0;
+        else if(menu==='ビルドアップ') dist = parseFloat(document.getElementById('bu-dist').value)||0;
+
+        let weather = "☁️--";
+        try {
+            const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:3000}));
+            const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&hourly=weathercode,temperature_2m&start_date=${selectedDate}&end_date=${selectedDate}&timezone=Asia%2FTokyo`);
+            const wData = await wRes.json(); const h = parseInt(document.getElementById('start-time').value.split(':')[0]);
+            const icons = {0:"☀️",1:"🌤️",2:"⛅",3:"☁️",61:"☔",95:"⚡"};
+            weather = (icons[wData.hourly.weathercode[h]] || "☁️") + Math.round(wData.hourly.temperature_2m[h]) + "℃";
+        } catch(e) { log("Weather skip"); }
+
+        await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDate).set({
+            date: selectedDate, type: menu, dist: dist.toFixed(2), detail: detail, weather: weather,
+            memo: document.getElementById('common-memo').value, time: document.getElementById('start-time').value
+        });
+        btn.disabled = false; closeModal(); loadData();
+    }
+</script>
+</body>
+</html>
