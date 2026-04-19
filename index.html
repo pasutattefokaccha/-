@@ -158,9 +158,7 @@
 
 <script>
     const log = (m) => { 
-        const monitor = document.getElementById('system-monitor');
-        monitor.innerText = "Status: " + m;
-        console.log(m);
+        document.getElementById('system-monitor').innerText = "Status: " + m;
     };
 
     const firebaseConfig = {
@@ -193,14 +191,14 @@
     async function handleLogin() {
         const e = document.getElementById('email').value.trim();
         const p = document.getElementById('password').value.trim();
-        if(!e || !p) { alert("メールとパスワードを入力してください"); return; }
+        if(!e || !p) { alert("入力してください"); return; }
         
-        log("Attempting login...");
+        log("Logging in...");
         try {
             await auth.signInWithEmailAndPassword(e, p);
         } catch(err) {
-            log("Login Error: " + err.code);
-            alert("ログイン失敗 (" + err.code + "): " + err.message);
+            log("Error: " + err.code);
+            alert("ログイン失敗\nコード: " + err.code + "\n理由: " + err.message);
         }
     }
 
@@ -209,27 +207,29 @@
         const p = document.getElementById('password').value.trim();
         if(!e || !p) { alert("メールとパスワードを入力してください"); return; }
         
-        log("Attempting signup...");
+        log("Registering...");
         try {
             await auth.createUserWithEmailAndPassword(e, p);
-            alert("登録完了！そのままログインされます。");
+            alert("登録完了！ログインしました。");
         } catch(err) {
             log("Signup Error: " + err.code);
-            alert("登録失敗: " + err.message);
+            // ここでエラー内容を詳しく出す
+            if(err.code === 'auth/operation-not-allowed') {
+                alert("エラー: Firebase側で「メール/パスワード認証」が有効になっていません。\nコンソールのAuthenticationから有効にしてください。");
+            } else {
+                alert("登録失敗\nコード: " + err.code + "\n理由: " + err.message);
+            }
         }
     }
 
     async function loadData() {
         if(!auth.currentUser) return;
-        log("Loading your data...");
         try {
             const snap = await db.collection('users').doc(auth.currentUser.uid).collection('diaries').get();
             cachedDiaries = snap.docs.map(doc => doc.data());
-            log("Data loaded. Ready.");
             renderCalendar();
         } catch(e) {
-            log("Database Access Denied. Check Rules.");
-            console.error(e);
+            log("Database Error: " + e.message);
         }
     }
 
@@ -329,5 +329,4 @@
     async function saveDiary() {
         const btn = document.getElementById('save-btn'); btn.disabled = true; btn.innerText = "取得中...";
         const menu = document.getElementById('menu-select').value;
-        let dist = 0, detail = "";
-        if(menu==='ジョグ') { dist
+     
