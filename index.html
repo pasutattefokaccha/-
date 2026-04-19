@@ -43,7 +43,6 @@
         .btn-cancel { background: #eee; color: #666; }
         .btn-delete { background: var(--danger); color: white; margin-top: 20px; }
         
-        /* 固定表示テキスト */
         .fixed-view { background: #f8f9fa; padding: 15px; border-radius: 15px; border: 1px solid #eee; margin-bottom: 15px; }
         .fixed-row { margin-bottom: 8px; font-size: 0.95rem; border-bottom: 1px dashed #ddd; padding-bottom: 4px; }
         .fixed-label { color: #888; font-size: 0.75rem; display: block; }
@@ -94,7 +93,6 @@
         <div id="edit-section">
             <label style="font-size:0.8rem; color:#666;">開始時間</label>
             <input type="time" id="start-time" value="17:00" oninput="calcJog()">
-            
             <label style="font-size:0.8rem; color:#666;">メニュー</label>
             <select id="menu-select" onchange="toggleMenuFields()">
                 <option value="ジョグ">ジョグ</option>
@@ -105,7 +103,6 @@
                 <option value="ビルドアップ">ビルドアップ</option>
                 <option value="レスト">レスト(完全休養)</option>
             </select>
-
             <div id="fields-jog" class="dynamic-section">
                 <label style="font-size:0.75rem; color:#666;">終了時刻 (自動計算)</label>
                 <input type="time" id="jog-end-time" oninput="calcJog()">
@@ -113,20 +110,17 @@
                 <input type="number" id="jog-min" placeholder="走行時間 (分)" oninput="calcJog()">
                 <div id="jog-res" class="res-preview">ペース: --:--/km</div>
             </div>
-
             <div id="fields-int" class="dynamic-section" style="display:none;">
                 <input type="text" id="int-dist-v2" placeholder="距離 (例: 400m)">
                 <input type="text" id="int-time-v2" placeholder="タイム (例: 72秒)">
                 <input type="text" id="int-connect-v2" placeholder="つなぎ (例: 200m)">
             </div>
-
             <div id="fields-rt" class="dynamic-section" style="display:none;">
                 <input type="number" id="rt-dist" placeholder="距離(m)">
                 <input type="number" id="rt-count" placeholder="本数">
                 <input type="number" id="rt-rest" placeholder="休憩(秒)">
                 <input type="number" id="rt-time" placeholder="設定タイム(秒)">
             </div>
-
             <div id="fields-tt" class="dynamic-section" style="display:none;">
                 <input type="number" id="tt-dist-km" step="0.01" placeholder="距離 (km)">
                 <div style="display:flex; gap:5px; align-items:center;">
@@ -135,18 +129,15 @@
                     <input type="number" id="tt-msec" placeholder="0" style="width:20%">
                 </div>
             </div>
-
             <div id="fields-pace" class="dynamic-section" style="display:none;">
                 <input type="number" id="pace-dist" placeholder="距離 (km)">
                 <input type="text" id="pace-val" placeholder="設定ペース (例: 4:15)">
             </div>
-
             <div id="fields-bu" class="dynamic-section" style="display:none;">
                 <input type="number" id="bu-dist" placeholder="距離 (km)">
                 <input type="text" id="bu-start" placeholder="開始ペース">
                 <input type="text" id="bu-end" placeholder="終了ペース">
             </div>
-
             <textarea id="common-memo" placeholder="メモ・感想" rows="3"></textarea>
             <button class="btn btn-save" id="save-btn" onclick="saveDiary()">保存</button>
             <button class="btn btn-cancel" onclick="closeModal()">キャンセル</button>
@@ -184,20 +175,26 @@
     const authBtn = document.getElementById('auth-btn');
     const errDiv = document.getElementById('auth-error');
 
+    // 認証処理の安定化
     authBtn.onclick = async () => {
-        const e = document.getElementById('email').value.trim();
-        const p = document.getElementById('password').value;
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
         errDiv.style.display = 'none';
-        if (!e || !p) return;
+        if (!email || !password) return;
         authBtn.disabled = true;
+        authBtn.innerText = "通信中...";
         try {
-            await auth.signInWithEmailAndPassword(e, p);
+            await auth.signInWithEmailAndPassword(email, password);
         } catch (err) {
-            if (err.code.includes('not-found') || err.code.includes('credentials')) {
-                try { await auth.createUserWithEmailAndPassword(e, p); } catch (re) { showError("Error: " + re.message); }
-            } else { showError("Error: " + err.code); }
+            // ログインに失敗したら新規登録を試みる
+            try {
+                await auth.createUserWithEmailAndPassword(email, password);
+            } catch (regErr) {
+                showError("認証エラー: " + regErr.message);
+            }
         }
         authBtn.disabled = false;
+        authBtn.innerText = "ログイン / 新規登録";
     };
 
     auth.onAuthStateChanged(user => {
@@ -276,12 +273,9 @@
         selectedDateStr = ds;
         document.getElementById('modal-date-title').innerText = ds.replace(/-/g, '/');
         const rec = cachedDiaries.find(r => r.date === ds);
-        
         const viewSec = document.getElementById('view-section');
         const editSec = document.getElementById('edit-section');
-
         if(rec) {
-            // 保存済みデータがある場合：テキスト表示（固定）
             viewSec.classList.remove('hidden');
             editSec.classList.add('hidden');
             document.getElementById('fixed-content').innerHTML = `
@@ -292,10 +286,8 @@
                 <div class="fixed-row" style="border:none;"><span class="fixed-label">メモ</span>${rec.memo || '-'}</div>
             `;
         } else {
-            // データがない場合：入力フォームを表示
             viewSec.classList.add('hidden');
             editSec.classList.remove('hidden');
-            // フォームをリセット
             document.getElementById('menu-select').value = "ジョグ";
             document.getElementById('start-time').value = "17:00";
             document.getElementById('jog-end-time').value = "";
@@ -330,7 +322,6 @@
     async function saveDiary() {
         const menu = document.getElementById('menu-select').value;
         let dist = 0, detail = "", ttTime = "";
-        
         if (menu === 'ジョグ') {
             dist = parseFloat(document.getElementById('jog-dist').value) || 0;
             detail = document.getElementById('jog-res').innerText;
@@ -345,13 +336,12 @@
         } else if (menu === 'インターバル') {
             detail = `${document.getElementById('int-dist-v2').value} / ${document.getElementById('int-time-v2').value}`;
         }
-
         const btn = document.getElementById('save-btn');
         btn.disabled = true; btn.innerText = "保存中...";
-
         let w = "☁️--";
         try {
             const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:2000}));
             const wr = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&hourly=weathercode,temperature_2m&start_date=${selectedDateStr}&end_date=${selectedDateStr}&timezone=Asia%2FTokyo`);
             const wd = await wr.json();
-            const h = parseInt(document.getElementById('start-
+            const h = parseInt(document.getElementById('start-time').value.split(':')[0]);
+            w = ({0:"☀️",1:"🌤️",2:"⛅",3
