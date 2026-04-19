@@ -6,7 +6,6 @@
     <title>RUN DIARY - Firebase Debug</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-firestore-compat.js"></script>
     
     <style>
@@ -14,23 +13,6 @@
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding-bottom: 80px; }
         
-        /* ログイン画面 */
-        #auth-container { display: flex; align-items: center; justify-content: center; height: 100vh; }
-        .auth-box { background: white; padding: 30px; border-radius: 20px; width: 85%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        
-        #auth-error { 
-            color: #d32f2f; 
-            font-size: 0.85rem; 
-            margin-top: 15px; 
-            background: #ffebee; 
-            padding: 10px; 
-            border-radius: 8px; 
-            display: none; 
-            text-align: left;
-            word-break: break-all;
-            white-space: pre-wrap;
-        }
-
         .monthly-stats { background: var(--primary); color: white; padding: 15px; border-radius: 15px; margin-bottom: 10px; text-align: center; }
         .monthly-stats-value { font-size: 1.8rem; font-weight: bold; }
 
@@ -50,7 +32,7 @@
         .bg-rest { background-color: #eeeeee; color: #616161; }
         .bg-other { background-color: #e0f7fa; color: #00838f; }
 
-        .search-fab { position: fixed; right: 20px; bottom: 20px; width: 60px; height: 60px; background: var(--primary); color: white; border-radius: 30px; display: none; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; z-index: 90; }
+        .search-fab { position: fixed; right: 20px; bottom: 20px; width: 60px; height: 60px; background: var(--primary); color: white; border-radius: 30px; display: flex; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; z-index: 90; }
 
         #entry-modal, #search-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; overflow-y: auto; }
         .modal-content { background: white; margin: 5% auto; width: 90%; max-width: 450px; padding: 20px; border-radius: 20px; }
@@ -67,17 +49,7 @@
 </head>
 <body>
 
-<div id="auth-container">
-    <div class="auth-box">
-        <h2 style="color:var(--primary)">RUN DIARY</h2>
-        <input type="email" id="email" placeholder="メールアドレス">
-        <input type="password" id="password" placeholder="パスワード(6文字以上)">
-        <button id="auth-btn" class="btn btn-save">ログイン / 新規登録</button>
-        <div id="auth-error"></div>
-    </div>
-</div>
-
-<div id="app-container" class="container hidden">
+<div id="app-container" class="container">
     <div class="monthly-stats">
         <div id="stats-month-label">今月の合計距離</div>
         <div class="monthly-stats-value"><span id="month-total-val">0.00</span> <small>km</small></div>
@@ -88,7 +60,6 @@
         <button onclick="changeMonth(1)">＞</button>
     </div>
     <div class="calendar" id="calendar-grid"></div>
-    <button id="logout-btn" style="width:100%; margin-top:20px; border:none; background:none; color:#999; font-size:0.8rem;">ログアウト</button>
 </div>
 
 <button class="search-fab" id="fab-search" onclick="openSearch()">🔍</button>
@@ -167,70 +138,18 @@
     };
 
     firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
     const db = firebase.firestore();
 
     let currentViewDate = new Date();
     let selectedDateStr = "";
     let cachedDiaries = [];
 
-    const authBtn = document.getElementById('auth-btn');
-    const errDiv = document.getElementById('auth-error');
-
-    authBtn.addEventListener('click', async () => {
-        const email = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value;
-        errDiv.style.display = 'none';
-        
-        if (!email || !password || password.length < 6) {
-            showError("メールと6文字以上のパスワードを入力してください");
-            return;
-        }
-
-        authBtn.innerText = "通信中...";
-        authBtn.disabled = true;
-
-        try {
-            await auth.signInWithEmailAndPassword(email, password);
-        } catch (error) {
-            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-login-credentials') {
-                try {
-                    await auth.createUserWithEmailAndPassword(email, password);
-                } catch (regErr) {
-                    showError(`【重要】Firebaseの設定を確認してください。\nコード: ${regErr.code}\n理由: Authenticationで「メール/パスワード」が有効になっていない可能性があります。`);
-                }
-            } else {
-                showError(`エラー: ${error.code}\n${error.message}`);
-            }
-        }
-        authBtn.innerText = "ログイン / 新規登録";
-        authBtn.disabled = false;
-    });
-
-    function showError(msg) {
-        errDiv.innerText = msg;
-        errDiv.style.display = 'block';
-    }
-
-    auth.onAuthStateChanged(user => {
-        const fab = document.getElementById('fab-search');
-        if (user) {
-            document.getElementById('auth-container').classList.add('hidden');
-            document.getElementById('app-container').classList.remove('hidden');
-            fab.style.display = 'flex';
-            loadCloudData();
-        } else {
-            document.getElementById('auth-container').classList.remove('hidden');
-            document.getElementById('app-container').classList.add('hidden');
-            fab.style.display = 'none';
-        }
-    });
+    // 起動時にデータを読み込む
+    loadCloudData();
 
     async function loadCloudData() {
-        const user = auth.currentUser;
-        if(!user) return;
         try {
-            const snap = await db.collection('users').doc(user.uid).collection('diaries').get();
+            const snap = await db.collection('diaries').get();
             cachedDiaries = snap.docs.map(doc => doc.data());
             renderCalendar();
         } catch(e) { console.error(e); }
@@ -323,7 +242,6 @@
         if (record) {
             document.getElementById('menu-select').value = record.type;
             if (record.type === 'ジョグ') {
-                const detailParts = record.detail.match(/(\d+):(\d+)/); // ペースから逆算は難しいため入力値があれば望ましいが、今回は記録のみ
                 document.getElementById('jog-dist').value = record.dist;
             } else if (record.type === 'タイムトライアル') {
                 document.getElementById('tt-dist-km').value = record.dist;
@@ -380,4 +298,34 @@
             dist = parseFloat(document.getElementById('bu-dist').value) || 0;
             detail = `BU: ${document.getElementById('bu-start').value}〜${document.getElementById('bu-end').value}`;
         } else if (menuType === 'その他') {
-            dist = parseFloat(document.getElem
+            dist = parseFloat(document.getElementById('other-dist').value) || 0;
+            detail = document.getElementById('other-content').value;
+        }
+
+        const data = {
+            date: selectedDateStr,
+            type: menuType,
+            dist: dist || 0,
+            detail: detail,
+            ttTime: ttTime,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        try {
+            await db.collection('diaries').doc(selectedDateStr).set(data);
+            closeModal();
+            loadCloudData();
+        } catch(e) { alert("保存失敗: " + e.message); }
+    }
+
+    async function deleteDiary() {
+        if(!confirm("この日の記録を削除しますか？")) return;
+        try {
+            await db.collection('diaries').doc(selectedDateStr).delete();
+            closeModal();
+            loadCloudData();
+        } catch(e) { alert("削除失敗: " + e.message); }
+    }
+</script>
+</body>
+</html>
