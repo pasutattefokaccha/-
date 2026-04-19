@@ -63,7 +63,7 @@
     <div class="calendar" id="calendar-grid"></div>
 </div>
 
-<button class="add-fab" id="fab-add" onclick="openModal(new Date().toISOString().split('T')[0])">＋</button>
+<button class="add-fab" id="fab-add" onclick="openModal(new Date().toISOString().split('T')[0], true)">＋</button>
 <button class="search-fab" id="fab-search" onclick="openSearch()">🔍</button>
 
 <div id="entry-modal">
@@ -193,8 +193,13 @@
                 recordEl.innerHTML = `<span style="font-weight:bold">${record.dist}k</span>`;
                 dayEl.appendChild(recordEl);
                 monthlyTotal += parseFloat(record.dist);
+                
+                // 記録がある場合のみ閲覧・削除用に開ける
+                dayEl.onclick = () => openModal(dateStr, false);
+            } else {
+                // 記録がない場合はクリックしても何もしない
+                dayEl.style.cursor = 'default';
             }
-            dayEl.onclick = () => openModal(dateStr);
             grid.appendChild(dayEl);
         }
         document.getElementById('month-total-val').innerText = monthlyTotal.toFixed(2);
@@ -253,7 +258,7 @@
         document.getElementById('int-res').innerText = "走行合計: 0.00 km";
     }
 
-    function openModal(dateStr) {
+    function openModal(dateStr, isNewEntry) {
         selectedDateStr = dateStr;
         document.getElementById('modal-date-title').innerText = dateStr.replace(/-/g, '/');
         clearInputs();
@@ -289,8 +294,12 @@
                 document.getElementById('other-content').value = record.detail;
             }
             document.getElementById('delete-btn').style.display = 'block';
-        } else {
+            document.getElementById('save-btn').style.display = 'block';
+        } else if (isNewEntry) {
             document.getElementById('delete-btn').style.display = 'none';
+            document.getElementById('save-btn').style.display = 'block';
+        } else {
+            return; // 記録がなく、新規作成でもない場合は開かない
         }
         
         document.getElementById('entry-modal').style.display = 'block';
