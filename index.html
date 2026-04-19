@@ -172,7 +172,6 @@
     let selectedDateStr = "";
     let cachedDiaries = [];
 
-    // --- 認証修正ロジック ---
     const authBtn = document.getElementById('auth-btn');
     const errDiv = document.getElementById('auth-error');
 
@@ -190,10 +189,8 @@
         authBtn.disabled = true;
 
         try {
-            // まずはログインを試みる
             await auth.signInWithEmailAndPassword(email, password);
         } catch (error) {
-            // ユーザーがいないか、パスワードが未設定の場合に新規登録
             if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-login-credentials') {
                 try {
                     await auth.createUserWithEmailAndPassword(email, password);
@@ -227,7 +224,6 @@
         }
     });
 
-    // --- 以降、他の機能（修正なし） ---
     async function loadCloudData() {
         const user = auth.currentUser;
         if(!user) return;
@@ -255,10 +251,19 @@
             const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
             const dayEl = document.createElement('div'); dayEl.className = 'day';
             if (new Date().toISOString().split('T')[0] === dateStr) dayEl.classList.add('today');
-            dayEl.innerHTML = `<div class="day-num">${d}</div>`;
+            
+            const dayNumEl = document.createElement('div');
+            dayNumEl.className = 'day-num';
+            dayNumEl.innerText = d;
+            dayEl.appendChild(dayNumEl);
+
             const record = cachedDiaries.find(item => item.date === dateStr);
             if (record) {
-                dayEl.innerHTML += `<div class="cal-record ${getColorClass(record.type)}"><span style="font-weight:bold">${record.dist}k</span></div>`;
+                const recordEl = document.createElement('div');
+                recordEl.className = `cal-record ${getColorClass(record.type)}`;
+                recordEl.style.pointerEvents = 'none';
+                recordEl.innerHTML = `<span style="font-weight:bold">${record.dist}k</span>`;
+                dayEl.appendChild(recordEl);
                 monthlyTotal += parseFloat(record.dist);
             }
             dayEl.onclick = () => openModal(dateStr);
@@ -334,20 +339,29 @@
             dist = parseFloat(document.getElementById('tt-dist-km').value) || 0;
             ttTime = `${document.getElementById('tt-min').value}:${document.getElementById('tt-sec').value}.${document.getElementById('tt-msec').value}`;
             detail = `${dist}k TT [${ttTime}]`;
+        } else if (menuType === 'ペース走') {
+            dist = parseFloat(document.getElementById('pace-dist').value) || 0;
+            detail = `ペース走: ${document.getElementById('pace-val').value}`;
+        } else if (menuType === 'ビルドアップ') {
+            dist = parseFloat(document.getElementById('bu-dist').value) || 0;
+            detail = `BU: ${document.getElementById('bu-start').value}〜${document.getElementById('bu-end').value}`;
         } else if (menuType === 'その他') {
             dist = parseFloat(document.getElementById('other-dist').value) || 0;
             detail = document.getElementById('other-content').value;
         }
-        if (isNaN(dist) && menuType !== 'レスト') return alert("距離を入力してください");
+        
+        if (menuType !== 'レスト' && (isNaN(dist) || dist <= 0)) return alert("距離を正しく入力してください");
+        
         const btn = document.getElementById('save-btn');
         btn.innerText = "保存中..."; btn.disabled = true;
         let w = "☁️", t = "--°C";
         try {
-            const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
+            const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, {timeout: 5000}));
             const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current_weather=true`);
             const data = await res.json();
             t = Math.round(data.current_weather.temperature) + "°C";
         } catch(e) {}
+        
         const diary = { date: selectedDateStr, type: menuType, dist: dist.toFixed(2), detail: detail, weather: w, temp: t, ttTime: ttTime };
         try {
             await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDateStr).set(diary);
