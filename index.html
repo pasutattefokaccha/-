@@ -3,26 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RUN DIARY - Stable Auth</title>
+    <title>RUN DIARY - Final Stable</title>
     
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     
     <style>
         :root { --primary: #007AFF; --bg: #f2f2f7; --card: #ffffff; --today: #fff9c4; --danger: #ff3b30; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding-bottom: 80px; }
-        
         #auth-container { display: flex; align-items: center; justify-content: center; height: 100vh; position: relative; }
         .auth-box { background: white; padding: 30px; border-radius: 20px; width: 85%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        
-        #auth-error { 
-            color: #d32f2f; font-size: 0.85rem; margin-top: 15px; 
-            background: #ffebee; padding: 10px; border-radius: 8px; 
-            display: none; text-align: left; word-break: break-all; white-space: pre-wrap;
-        }
-
+        #auth-error { color: #d32f2f; font-size: 0.85rem; margin-top: 15px; background: #ffebee; padding: 10px; border-radius: 8px; display: none; text-align: left; word-break: break-all; }
         .version-tag { position: absolute; right: 10px; bottom: 10px; font-size: 10px; color: #999; }
         .monthly-stats { background: var(--primary); color: white; padding: 15px; border-radius: 15px; margin-bottom: 10px; text-align: center; }
         .monthly-stats-value { font-size: 1.8rem; font-weight: bold; }
@@ -40,7 +33,6 @@
         .bg-bu { background-color: #f3e5f5; color: #7b1fa2; border-left: 3px solid #7b1fa2; }
         .bg-rest { background-color: #eeeeee; color: #616161; }
         .bg-other { background-color: #e0f7fa; color: #00838f; border-left: 3px solid #00838f; }
-
         .search-fab { position: fixed; right: 20px; bottom: 20px; width: 60px; height: 60px; background: var(--primary); color: white; border-radius: 30px; display: none; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; z-index: 90; }
         #entry-modal, #search-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; overflow-y: auto; }
         .modal-content { background: white; margin: 5% auto; width: 92%; max-width: 450px; padding: 20px; border-radius: 20px; }
@@ -62,12 +54,12 @@
 <div id="auth-container">
     <div class="auth-box">
         <h2 style="color:var(--primary)">RUN DIARY</h2>
-        <input type="email" id="email" placeholder="メールアドレス">
-        <input type="password" id="password" placeholder="パスワード(6文字以上)">
+        <input type="email" id="email" placeholder="メールアドレス" autocomplete="email">
+        <input type="password" id="password" placeholder="パスワード(6文字以上)" autocomplete="current-password">
         <button id="auth-btn" class="btn btn-save" onclick="handleAuth()">ログイン / 新規登録</button>
         <div id="auth-error"></div>
     </div>
-    <div class="version-tag">ver 1.8.1</div>
+    <div class="version-tag">ver 1.8.2-stable</div>
 </div>
 
 <div id="app-container" class="container hidden">
@@ -81,7 +73,7 @@
         <button onclick="changeMonth(1)" style="border:none; background:none; font-size:1.2rem;">▶</button>
     </div>
     <div class="calendar" id="calendar-grid"></div>
-    <button id="logout-btn" onclick="auth.signOut()" style="width:100%; margin-top:20px; border:none; background:none; color:#999; font-size:0.8rem; text-decoration:underline;">ログアウト</button>
+    <button id="logout-btn" onclick="firebase.auth().signOut()" style="width:100%; margin-top:20px; border:none; background:none; color:#999; font-size:0.8rem; text-decoration:underline;">ログアウト</button>
 </div>
 
 <button class="search-fab" id="fab-search" onclick="openSearch()">🔍</button>
@@ -174,15 +166,37 @@
         appId: "1:623990853537:web:68417f21002106b5c745e0"
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-
+    // グローバル変数
+    let db, auth;
     let currentViewDate = new Date();
     let selectedDateStr = "";
     let cachedDiaries = [];
 
-    // --- 【修正】ログイン処理 ---
+    // --- 確実に初期化 ---
+    window.onload = function() {
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        db = firebase.firestore();
+        auth = firebase.auth();
+
+        auth.onAuthStateChanged(user => {
+            const fab = document.getElementById('fab-search');
+            if (user) {
+                document.getElementById('auth-container').classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+                fab.style.display = 'flex';
+                loadCloudData();
+            } else {
+                document.getElementById('auth-container').classList.remove('hidden');
+                document.getElementById('app-container').classList.add('hidden');
+                fab.style.display = 'none';
+            }
+        });
+        renderCalendar();
+    };
+
+    // --- ログイン処理 (成功パターン) ---
     async function handleAuth() {
         const btn = document.getElementById('auth-btn');
         const email = document.getElementById('email').value.trim();
@@ -200,17 +214,14 @@
         btn.disabled = true;
 
         try {
+            // ログイン試行
             await auth.signInWithEmailAndPassword(email, password);
         } catch (error) {
-            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-login-credentials') {
-                try {
-                    await auth.createUserWithEmailAndPassword(email, password);
-                } catch (regErr) {
-                    errDiv.innerText = "エラー: " + regErr.message;
-                    errDiv.style.display = 'block';
-                }
-            } else {
-                errDiv.innerText = "エラー: " + error.message;
+            // 失敗したら新規登録試行
+            try {
+                await auth.createUserWithEmailAndPassword(email, password);
+            } catch (regErr) {
+                errDiv.innerText = "エラー: " + regErr.message;
                 errDiv.style.display = 'block';
             }
         }
@@ -218,21 +229,7 @@
         btn.disabled = false;
     }
 
-    auth.onAuthStateChanged(user => {
-        const fab = document.getElementById('fab-search');
-        if (user) {
-            document.getElementById('auth-container').classList.add('hidden');
-            document.getElementById('app-container').classList.remove('hidden');
-            fab.style.display = 'flex';
-            loadCloudData();
-        } else {
-            document.getElementById('auth-container').classList.remove('hidden');
-            document.getElementById('app-container').classList.add('hidden');
-            fab.style.display = 'none';
-        }
-    });
-
-    // --- その他機能（変更なし） ---
+    // --- データ処理 ---
     async function loadCloudData() {
         if(!auth.currentUser) return;
         try {
@@ -244,6 +241,7 @@
 
     function renderCalendar() {
         const grid = document.getElementById('calendar-grid');
+        if(!grid) return;
         grid.innerHTML = "";
         const year = currentViewDate.getFullYear(), month = currentViewDate.getMonth();
         document.getElementById('current-month-display').innerText = `${year}年 ${month + 1}月`;
@@ -305,7 +303,10 @@
     
     function toggleMenuFields() {
         const menu = document.getElementById('menu-select').value;
-        ['fields-jog', 'fields-int', 'fields-rt', 'fields-tt', 'fields-pace', 'fields-bu', 'fields-other'].forEach(id => document.getElementById(id).style.display = 'none');
+        ['fields-jog', 'fields-int', 'fields-rt', 'fields-tt', 'fields-pace', 'fields-bu', 'fields-other'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.style.display = 'none';
+        });
         const target = {'ジョグ':'fields-jog','インターバル':'fields-int','レストトレーニング':'fields-rt','タイムトライアル':'fields-tt','ペース走':'fields-pace','ビルドアップ':'fields-bu','その他':'fields-other'}[menu];
         if(target) document.getElementById(target).style.display = 'block';
     }
@@ -346,4 +347,4 @@
         } else if (menuType === 'レストトレーニング') {
             const d = parseFloat(document.getElementById('rt-dist').value)||0, c = parseFloat(document.getElementById('rt-count').value)||0;
             dist = (d * c) / 1000;
-            detail = `${d}m×${c} (${document.getEleme
+            detail = `${d}m×${c} (${document.g
