@@ -214,6 +214,7 @@
     function calcJog() {
         const d = parseFloat(document.getElementById('jog-dist').value), min = parseFloat(document.getElementById('jog-min').value);
         if(d && min) { const s = (min*60)/d; document.getElementById('jog-res').innerText = `ペース: ${Math.floor(s/60)}:${Math.round(s%60).toString().padStart(2,'0')}/km`; }
+        else { document.getElementById('jog-res').innerText = "ペース: --:--/km"; }
     }
 
     function calcPaceTime() {
@@ -221,17 +222,30 @@
         if(d && p.includes(':')) {
             const [m, s] = p.split(':').map(Number); const total = (m*60+s)*d;
             document.getElementById('pace-res').innerText = `合計走行時間: ${Math.floor(total/60)}分${Math.round(total%60)}秒`;
-        }
+        } else { document.getElementById('pace-res').innerText = "合計走行時間: --分--秒"; }
     }
 
     function openModal(d) {
+        // 全項目を一旦空にリセット
+        document.querySelectorAll('input:not([type="time"]), textarea').forEach(i => i.value = "");
+        document.getElementById('menu-select').value = "ジョグ";
+        document.getElementById('start-time').value = "17:00";
+        document.getElementById('jog-res').innerText = "ペース: --:--/km";
+        document.getElementById('pace-res').innerText = "合計走行時間: --分--秒";
+
         selectedDate = d; document.getElementById('modal-date-title').innerText = d;
         const rec = cachedDiaries.find(r => r.date === d);
         document.getElementById('delete-btn').classList.toggle('hidden', !rec);
-        document.getElementById('common-memo').value = rec ? (rec.memo || "") : "";
+        
         if(rec) {
             document.getElementById('menu-select').value = rec.type;
             document.getElementById('start-time').value = rec.time || "17:00";
+            document.getElementById('common-memo').value = rec.memo || "";
+            // 詳細データの復元（一部のみ。メニューが多いため簡略化。必要に応じて追加可能）
+            if(rec.type === 'ジョグ') {
+                const parts = rec.detail ? rec.detail.split('/') : [];
+                // detail保存形式に依存するため、今回はシンプルに空で開くか必要最低限を検討
+            }
         }
         document.getElementById('entry-modal').style.display = 'block';
         switchFields();
@@ -257,7 +271,10 @@
         const menu = document.getElementById('menu-select').value;
         let dist = 0, detail = "";
 
-        if(menu==='ジョグ') dist = parseFloat(document.getElementById('jog-dist').value)||0;
+        if(menu==='ジョグ') {
+            dist = parseFloat(document.getElementById('jog-dist').value)||0;
+            detail = `時間:${document.getElementById('jog-min').value}分 / ${document.getElementById('jog-res').innerText}`;
+        }
         else if(menu==='タイムトライアル') {
             dist = parseFloat(document.getElementById('tt-dist').value)||0;
             detail = `${document.getElementById('tt-min').value}:${document.getElementById('tt-sec').value.padStart(2,'0')}.${document.getElementById('tt-msec').value}`;
@@ -265,8 +282,13 @@
             detail = `距離:${document.getElementById('int-dist-v2').value} / タイム:${document.getElementById('int-time-v2').value} / つなぎ:${document.getElementById('int-connect-v2').value}`;
         } else if(menu==='レストトレーニング') {
             detail = `${document.getElementById('rt-dist').value}m×${document.getElementById('rt-count').value} (T:${document.getElementById('rt-time').value}s / R:${document.getElementById('rt-rest').value}s)`;
-        } else if(menu==='ペース走') dist = parseFloat(document.getElementById('pace-dist').value)||0;
-        else if(menu==='ビルドアップ') dist = parseFloat(document.getElementById('bu-dist').value)||0;
+        } else if(menu==='ペース走') {
+            dist = parseFloat(document.getElementById('pace-dist').value)||0;
+            detail = `設定:${document.getElementById('pace-val').value} / ${document.getElementById('pace-res').innerText}`;
+        } else if(menu==='ビルドアップ') {
+            dist = parseFloat(document.getElementById('bu-dist').value)||0;
+            detail = `${document.getElementById('bu-start').value} → ${document.getElementById('bu-end').value}`;
+        }
 
         let weather = "☁️--";
         try {
