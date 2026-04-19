@@ -62,11 +62,11 @@
     <div class="auth-box">
         <h2 style="color:var(--primary)">RUN DIARY</h2>
         <input type="email" id="email" placeholder="メールアドレス" autocomplete="email">
-        <input type="password" id="password" placeholder="パスワード(6文字以上)" autocomplete="current-password">
-        <button id="auth-btn" class="btn" style="background:var(--primary); color:white;" disabled>読み込み中...</button>
+        <input type="password" id="password" placeholder="パスワード" autocomplete="current-password">
+        <button id="auth-btn" class="btn" style="background:var(--primary); color:white;">ログイン / 新規登録</button>
         <div id="auth-error"></div>
     </div>
-    <div class="version-tag">ver 1.2.4</div>
+    <div class="version-tag">ver 1.3.4</div>
 </div>
 
 <div id="app-container" class="container hidden">
@@ -106,7 +106,6 @@
                 <option value="レスト">レスト(完全休養)</option>
             </select>
             <div id="fields-jog" class="dynamic-section">
-                <label style="font-size:0.75rem; color:#666;">終了時刻 (自動計算)</label>
                 <input type="time" id="jog-end-time" oninput="calcJog()">
                 <input type="number" id="jog-dist" step="0.01" placeholder="距離 (km)" oninput="calcJog()">
                 <input type="number" id="jog-min" placeholder="走行時間 (分)" oninput="calcJog()">
@@ -157,6 +156,14 @@
 </div>
 
 <script>
+    // タイムアウト監視（5秒以上読み込まれなければエラー表示）
+    const loadTimer = setTimeout(() => {
+        if (typeof firebase === 'undefined') {
+            document.getElementById('auth-error').innerText = "SDKの読み込みに失敗しました。再読み込みしてください。";
+            document.getElementById('auth-error').style.display = 'block';
+        }
+    }, 5000);
+
     const firebaseConfig = {
         apiKey: "AIzaSyC0VeVEdEpcRP8dOvJokXq0lg2gBzloVls",
         authDomain: "runnikki-a7d37.firebaseapp.com",
@@ -166,191 +173,167 @@
         appId: "1:623990853537:web:68417f21002106b5c745e0"
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+    // Firebaseの存在を確認してから初期化
+    if (typeof firebase !== 'undefined') {
+        clearTimeout(loadTimer);
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
 
-    let currentViewDate = new Date();
-    let selectedDateStr = "";
-    let cachedDiaries = [];
+        let currentViewDate = new Date();
+        let selectedDateStr = "";
+        let cachedDiaries = [];
 
-    const authBtn = document.getElementById('auth-btn');
-    const errDiv = document.getElementById('auth-error');
+        const authBtn = document.getElementById('auth-btn');
+        const errDiv = document.getElementById('auth-error');
 
-    // 認証ボタンの初期化（Firebase準備完了後に有効化）
-    auth.onAuthStateChanged(user => {
-        authBtn.disabled = false;
-        authBtn.innerText = "ログイン / 新規登録";
-        if (user) {
-            document.getElementById('auth-container').classList.add('hidden');
-            document.getElementById('app-container').classList.remove('hidden');
-            loadCloudData();
-        } else {
-            document.getElementById('auth-container').classList.remove('hidden');
-            document.getElementById('app-container').classList.add('hidden');
-        }
-    });
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('auth-container').classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+                loadCloudData();
+            } else {
+                document.getElementById('auth-container').classList.remove('hidden');
+                document.getElementById('app-container').classList.add('hidden');
+            }
+        });
 
-    authBtn.onclick = async () => {
-        const email = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value;
-        errDiv.style.display = 'none';
-        
-        if (!email || !password) {
-            showError("メールとパスワードを入力してください");
-            return;
-        }
-
-        authBtn.disabled = true;
-        authBtn.innerText = "通信中...";
-
-        try {
-            await auth.signInWithEmailAndPassword(email, password);
-        } catch (err) {
-            // パスワード間違い以外（ユーザー未登録、または包括的な認証エラー）なら新規登録
-            if (err.code !== 'auth/wrong-password') {
+        authBtn.onclick = async () => {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            errDiv.style.display = 'none';
+            if (!email || !password) { showError("未入力があります"); return; }
+            authBtn.disabled = true; authBtn.innerText = "通信中...";
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+            } catch (err) {
                 try {
                     await auth.createUserWithEmailAndPassword(email, password);
-                } catch (regErr) {
-                    showError("認証失敗: " + regErr.message);
+                } catch (regErr) { showError("エラー: " + regErr.message); }
+            } finally {
+                authBtn.disabled = false; authBtn.innerText = "ログイン / 新規登録";
+            }
+        };
+
+        function showError(m) { errDiv.innerText = m; errDiv.style.display = 'block'; }
+
+        async function loadCloudData() {
+            if(!auth.currentUser) return;
+            try {
+                const snap = await db.collection('users').doc(auth.currentUser.uid).collection('diaries').get();
+                cachedDiaries = snap.docs.map(doc => doc.data());
+                renderCalendar();
+            } catch (e) { console.error(e); }
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = "";
+            const y = currentViewDate.getFullYear(), m = currentViewDate.getMonth();
+            document.getElementById('current-month-display').innerText = `${y}年 ${m + 1}月`;
+            ['日','月','火','水','木','金','土'].forEach(l => {
+                const el = document.createElement('div'); el.className = 'day-label'; el.innerText = l; grid.appendChild(el);
+            });
+            const first = new Date(y, m, 1).getDay(), last = new Date(y, m + 1, 0).getDate();
+            for (let i = 0; i < first; i++) grid.appendChild(document.createElement('div'));
+            let total = 0;
+            const now = new Date().toLocaleDateString('sv-SE');
+            for (let d = 1; d <= last; d++) {
+                const ds = `${y}-${(m + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
+                const el = document.createElement('div'); el.className = 'day';
+                if (now === ds) el.classList.add('is-today');
+                el.innerHTML = `<div class="day-num">${d}</div>`;
+                const rec = cachedDiaries.find(r => r.date === ds);
+                if (rec) {
+                    const cls = {'ジョグ':'bg-jog','タイムトライアル':'bg-tt','レスト':'bg-rest'}[rec.type] || 'bg-jog';
+                    el.innerHTML += `<div class="cal-record ${cls}"><b>${rec.dist}k</b><br>${rec.weather||''}</div>`;
+                    total += parseFloat(rec.dist || 0);
                 }
-            } else {
-                showError("パスワードが正しくありません");
+                el.onclick = () => openModal(ds);
+                grid.appendChild(el);
             }
-        } finally {
-            authBtn.disabled = false;
-            authBtn.innerText = "ログイン / 新規登録";
+            document.getElementById('month-total-val').innerText = total.toFixed(2);
         }
-    };
 
-    function showError(m) { errDiv.innerText = m; errDiv.style.display = 'block'; }
+        function calcJog() {
+            const s = document.getElementById('start-time').value, e = document.getElementById('jog-end-time').value;
+            const dI = document.getElementById('jog-dist'), mI = document.getElementById('jog-min');
+            if(s && e) {
+                const [sH, sM] = s.split(':').map(Number), [eH, eM] = e.split(':').map(Number);
+                let diff = (eH * 60 + eM) - (sH * 60 + sM);
+                if(diff < 0) diff += 1440;
+                mI.value = diff;
+            }
+            const d = parseFloat(dI.value), m = parseFloat(mI.value);
+            if(d > 0 && m > 0) {
+                const ps = (m * 60) / d;
+                document.getElementById('jog-res').innerText = `ペース: ${Math.floor(ps/60)}:${Math.round(ps%60).toString().padStart(2,'0')}/km`;
+            }
+        }
 
-    async function loadCloudData() {
-        if(!auth.currentUser) return;
-        try {
-            const snap = await db.collection('users').doc(auth.currentUser.uid).collection('diaries').get();
-            cachedDiaries = snap.docs.map(doc => doc.data());
-            renderCalendar();
-        } catch (e) { console.error(e); }
-    }
+        function toggleMenuFields() {
+            const m = document.getElementById('menu-select').value;
+            ['fields-jog', 'fields-int', 'fields-rt', 'fields-tt', 'fields-pace', 'fields-bu'].forEach(id => document.getElementById(id).style.display = 'none');
+            const target = {'ジョグ':'fields-jog','インターバル':'fields-int','レストトレーニング':'fields-rt','タイムトライアル':'fields-tt','ペース走':'fields-pace','ビルドアップ':'fields-bu'}[m];
+            if(target) document.getElementById(target).style.display = 'block';
+        }
 
-    function renderCalendar() {
-        const grid = document.getElementById('calendar-grid');
-        grid.innerHTML = "";
-        const y = currentViewDate.getFullYear(), m = currentViewDate.getMonth();
-        document.getElementById('current-month-display').innerText = `${y}年 ${m + 1}月`;
-        ['日','月','火','水','木','金','土'].forEach(l => {
-            const el = document.createElement('div'); el.className = 'day-label'; el.innerText = l; grid.appendChild(el);
-        });
-        const first = new Date(y, m, 1).getDay(), last = new Date(y, m + 1, 0).getDate();
-        for (let i = 0; i < first; i++) grid.appendChild(document.createElement('div'));
-        let total = 0;
-        const now = new Date().toLocaleDateString('sv-SE');
-        for (let d = 1; d <= last; d++) {
-            const ds = `${y}-${(m + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
-            const el = document.createElement('div'); el.className = 'day';
-            if (now === ds) el.classList.add('is-today');
-            el.innerHTML = `<div class="day-num">${d}</div>`;
+        function openModal(ds) {
+            selectedDateStr = ds;
+            document.getElementById('modal-date-title').innerText = ds.replace(/-/g, '/');
             const rec = cachedDiaries.find(r => r.date === ds);
-            if (rec) {
-                const cls = {'ジョグ':'bg-jog','タイムトライアル':'bg-tt','レスト':'bg-rest'}[rec.type] || 'bg-jog';
-                el.innerHTML += `<div class="cal-record ${cls}"><b>${rec.dist}k</b><br>${rec.weather||''}</div>`;
-                total += parseFloat(rec.dist || 0);
+            const viewSec = document.getElementById('view-section'), editSec = document.getElementById('edit-section');
+            if(rec) {
+                viewSec.classList.remove('hidden'); editSec.classList.add('hidden');
+                document.getElementById('fixed-content').innerHTML = `
+                    <div class="fixed-row"><span class="fixed-label">メニュー</span><b>${rec.type}</b></div>
+                    <div class="fixed-row"><span class="fixed-label">走行距離</span><b>${rec.dist} km</b></div>
+                    <div class="fixed-row"><span class="fixed-label">詳細</span>${rec.detail || 'なし'}</div>
+                    <div class="fixed-row" style="border:none;"><span class="fixed-label">メモ</span>${rec.memo || '-'}</div>`;
+            } else {
+                viewSec.classList.add('hidden'); editSec.classList.remove('hidden');
+                document.getElementById('jog-dist').value = ""; document.getElementById('jog-min').value = "";
+                document.getElementById('common-memo').value = ""; toggleMenuFields();
             }
-            el.onclick = () => openModal(ds);
-            grid.appendChild(el);
+            document.getElementById('entry-modal').style.display = 'block';
         }
-        document.getElementById('month-total-val').innerText = total.toFixed(2);
-    }
 
-    function calcJog() {
-        const s = document.getElementById('start-time').value, e = document.getElementById('jog-end-time').value;
-        const dI = document.getElementById('jog-dist'), mI = document.getElementById('jog-min');
-        if(s && e) {
-            const [sH, sM] = s.split(':').map(Number), [eH, eM] = e.split(':').map(Number);
-            let diff = (eH * 60 + eM) - (sH * 60 + sM);
-            if(diff < 0) diff += 1440;
-            mI.value = diff;
+        function closeModal() { document.getElementById('entry-modal').style.display = 'none'; }
+        function openSearch() { document.getElementById('search-modal').style.display = 'block'; }
+        function closeSearch() { document.getElementById('search-modal').style.display = 'none'; }
+        function changeMonth(diff) { currentViewDate.setMonth(currentViewDate.getMonth() + diff); renderCalendar(); }
+        
+        function searchTT() {
+            const q = parseFloat(document.getElementById('search-query').value);
+            const resDiv = document.getElementById('search-results');
+            const fil = cachedDiaries.filter(d => d.type === 'タイムトライアル' && (!q || parseFloat(d.dist) === q));
+            resDiv.innerHTML = fil.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(d => `<div style="padding:12px; border-bottom:1px solid #eee;"><b>${d.date}</b>: ${d.dist}km [${d.ttTime}]</div>`).join('');
         }
-        const d = parseFloat(dI.value), m = parseFloat(mI.value);
-        if(d > 0 && m > 0) {
-            const ps = (m * 60) / d;
-            document.getElementById('jog-res').innerText = `ペース: ${Math.floor(ps/60)}:${Math.round(ps%60).toString().padStart(2,'0')}/km`;
+
+        async function deleteDiary() {
+            if(confirm("削除しますか？")) {
+                await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDateStr).delete();
+                closeModal(); loadCloudData();
+            }
         }
-    }
 
-    function toggleMenuFields() {
-        const m = document.getElementById('menu-select').value;
-        ['fields-jog', 'fields-int', 'fields-rt', 'fields-tt', 'fields-pace', 'fields-bu'].forEach(id => document.getElementById(id).style.display = 'none');
-        const target = {'ジョグ':'fields-jog','インターバル':'fields-int','レストトレーニング':'fields-rt','タイムトライアル':'fields-tt','ペース走':'fields-pace','ビルドアップ':'fields-bu'}[m];
-        if(target) document.getElementById(target).style.display = 'block';
-    }
-
-    function openModal(ds) {
-        selectedDateStr = ds;
-        document.getElementById('modal-date-title').innerText = ds.replace(/-/g, '/');
-        const rec = cachedDiaries.find(r => r.date === ds);
-        const viewSec = document.getElementById('view-section');
-        const editSec = document.getElementById('edit-section');
-        if(rec) {
-            viewSec.classList.remove('hidden');
-            editSec.classList.add('hidden');
-            document.getElementById('fixed-content').innerHTML = `
-                <div class="fixed-row"><span class="fixed-label">メニュー</span><b>${rec.type}</b></div>
-                <div class="fixed-row"><span class="fixed-label">走行距離</span><b>${rec.dist} km</b></div>
-                <div class="fixed-row"><span class="fixed-label">開始時間 / 天気</span>${rec.time || '--:--'} / ${rec.weather || '--'}</div>
-                <div class="fixed-row"><span class="fixed-label">詳細</span>${rec.detail || 'なし'}</div>
-                <div class="fixed-row" style="border:none;"><span class="fixed-label">メモ</span>${rec.memo || '-'}</div>
-            `;
-        } else {
-            viewSec.classList.add('hidden');
-            editSec.classList.remove('hidden');
-            document.getElementById('menu-select').value = "ジョグ";
-            document.getElementById('start-time').value = "17:00";
-            document.getElementById('jog-end-time').value = "";
-            document.getElementById('jog-dist').value = "";
-            document.getElementById('jog-min').value = "";
-            document.getElementById('common-memo').value = "";
-            document.getElementById('jog-res').innerText = "ペース: --:--/km";
-            toggleMenuFields();
-        }
-        document.getElementById('entry-modal').style.display = 'block';
-    }
-
-    function closeModal() { document.getElementById('entry-modal').style.display = 'none'; }
-    function openSearch() { document.getElementById('search-modal').style.display = 'block'; }
-    function closeSearch() { document.getElementById('search-modal').style.display = 'none'; }
-    function changeMonth(diff) { currentViewDate.setMonth(currentViewDate.getMonth() + diff); renderCalendar(); }
-    
-    function searchTT() {
-        const q = parseFloat(document.getElementById('search-query').value);
-        const resDiv = document.getElementById('search-results');
-        const fil = cachedDiaries.filter(d => d.type === 'タイムトライアル' && (!q || parseFloat(d.dist) === q));
-        resDiv.innerHTML = fil.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(d => `<div style="padding:12px; border-bottom:1px solid #eee;"><b>${d.date}</b>: ${d.dist}km [${d.ttTime}]</div>`).join('');
-    }
-
-    async function deleteDiary() {
-        if(confirm("この日の記録を完全に削除しますか？")) {
-            await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDateStr).delete();
-            closeModal(); loadCloudData();
-        }
-    }
-
-    async function saveDiary() {
-        const menu = document.getElementById('menu-select').value;
-        let dist = 0, detail = "", ttTime = "";
-        if (menu === 'ジョグ') {
-            dist = parseFloat(document.getElementById('jog-dist').value) || 0;
-            detail = document.getElementById('jog-res').innerText;
-        } else if (menu === 'タイムトライアル') {
-            dist = parseFloat(document.getElementById('tt-dist-km').value) || 0;
-            ttTime = `${document.getElementById('tt-min').value}:${document.getElementById('tt-sec').value.padStart(2,'0')}.${document.getElementById('tt-msec').value}`;
-            detail = `TT: ${ttTime}`;
-        } else if (menu === 'レストトレーニング') {
-            const d = parseFloat(document.getElementById('rt-dist').value)||0, c = parseFloat(document.getElementById('rt-count').value)||0;
-            dist = (d * c) / 1000;
-            detail = `${d}m×${c} (T:${document.getElementById('rt-time').value}s / R:${document.getElementById('rt-rest').value}s)`;
-        } else if (menu === 'インターバル') {
-            detail = `${document.getElementById('int-dist-v2').value} / ${document.getElementById('int-time-v2').value}`;
-        }
-        const btn = document.getE
+        async function saveDiary() {
+            const menu = document.getElementById('menu-select').value;
+            let dist = 0, detail = "", ttTime = "";
+            if (menu === 'ジョグ') {
+                dist = parseFloat(document.getElementById('jog-dist').value) || 0;
+                detail = document.getElementById('jog-res').innerText;
+            } else if (menu === 'タイムトライアル') {
+                dist = parseFloat(document.getElementById('tt-dist-km').value) || 0;
+                ttTime = `${document.getElementById('tt-min').value}:${document.getElementById('tt-sec').value.padStart(2,'0')}.${document.getElementById('tt-msec').value}`;
+                detail = `TT: ${ttTime}`;
+            }
+            const btn = document.getElementById('save-btn');
+            btn.disabled = true; btn.innerText = "保存中...";
+            await db.collection('users').doc(auth.currentUser.uid).collection('diaries').doc(selectedDateStr).set({
+                date: selectedDateStr, type: menu, dist: dist.toFixed(2), detail: detail, 
+                ttTime: ttTime, memo: document.getElementById('common-memo').value,
+                time: document.getElementById('start-time').value
+            });
+            btn.disabled = false; btn.innerText = "保存";
+            closeModal(); load
