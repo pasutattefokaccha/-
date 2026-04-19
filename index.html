@@ -55,7 +55,7 @@
         <button id="auth-btn" class="btn" style="background:var(--primary); color:white;">ログイン / 新規登録</button>
         <div id="auth-error"></div>
     </div>
-    <div class="version-tag">ver 1.6.4</div>
+    <div class="version-tag">ver 1.7.0</div>
 </div>
 
 <div id="app-container" class="container hidden">
@@ -160,34 +160,24 @@
     let selectedDateStr = "";
     let cachedDiaries = [];
 
-    // --- ログインロジック (成功実績のあるフロー) ---
+    // --- 最も安定していたログイン処理 ---
     document.getElementById('auth-btn').onclick = async () => {
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
         const errDiv = document.getElementById('auth-error');
-        const btn = document.getElementById('auth-btn');
         errDiv.style.display = 'none';
 
         if (!email || !password) return;
-        btn.disabled = true; btn.innerText = "通信中...";
 
         try {
             await auth.signInWithEmailAndPassword(email, password);
-        } catch (error) {
-            // パスワード間違い以外は新規登録として扱う
-            if (error.code !== 'auth/wrong-password') {
-                try {
-                    await auth.createUserWithEmailAndPassword(email, password);
-                } catch (regError) {
-                    errDiv.innerText = regError.message;
-                    errDiv.style.display = 'block';
-                }
-            } else {
-                errDiv.innerText = "パスワードが正しくありません";
+        } catch (err) {
+            try {
+                await auth.createUserWithEmailAndPassword(email, password);
+            } catch (regErr) {
+                errDiv.innerText = regErr.message;
                 errDiv.style.display = 'block';
             }
-        } finally {
-            btn.disabled = false; btn.innerText = "ログイン / 新規登録";
         }
     };
 
@@ -276,12 +266,10 @@
             document.getElementById('fixed-content').innerHTML = `
                 <div class="fixed-row"><span class="fixed-label">メニュー</span><b>${rec.type}</b></div>
                 <div class="fixed-row"><span class="fixed-label">距離</span><b>${rec.dist} km</b></div>
-                <div class="fixed-row"><span class="fixed-label">時間/天気</span>${rec.time || '--:--'} / ${rec.weather || '--'}</div>
                 <div class="fixed-row"><span class="fixed-label">詳細</span>${rec.detail || 'なし'}</div>
                 <div class="fixed-row" style="border:none;"><span class="fixed-label">メモ</span>${rec.memo || '-'}</div>`;
         } else {
             viewSec.classList.add('hidden'); editSec.classList.remove('hidden');
-            document.getElementById('menu-select').value = "ジョグ";
             document.getElementById('jog-dist').value = ""; document.getElementById('jog-min').value = "";
             document.getElementById('common-memo').value = ""; document.getElementById('jog-res').innerText = "ペース: --:--/km";
             toggleMenuFields();
@@ -336,4 +324,11 @@
         btn.disabled = true; btn.innerText = "保存中...";
         let w = "☁️--";
         try {
-            const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosi
+            const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:2000}));
+            const wr = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&hourly=weathercode,temperature_2m&start_date=${selectedDateStr}&end_date=${selectedDateStr}&timezone=Asia%2FTokyo`);
+            const wd = await wr.json();
+            const h = parseInt(document.getElementById('start-time').value.split(':')[0]);
+            w = ({0:"☀️",1:"🌤️",2:"⛅",3:"☁️",61:"☔",95:"⚡"}[wd.hourly.weathercode[h]] || "☁️") + Math.round(wd.hourly.temperature_2m[h]) + "℃";
+        } catch(e) {}
+        
+        await db.collection('users').doc(auth.currentUser.uid).
