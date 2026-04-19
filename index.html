@@ -213,7 +213,6 @@
             alert("登録完了！ログインしました。");
         } catch(err) {
             log("Signup Error: " + err.code);
-            // ここでエラー内容を詳しく出す
             if(err.code === 'auth/operation-not-allowed') {
                 alert("エラー: Firebase側で「メール/パスワード認証」が有効になっていません。\nコンソールのAuthenticationから有効にしてください。");
             } else {
@@ -329,4 +328,4 @@
     async function saveDiary() {
         const btn = document.getElementById('save-btn'); btn.disabled = true; btn.innerText = "取得中...";
         const menu = document.getElementById('menu-select').value;
-     
+        let dist = 0, detail = "";
