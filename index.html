@@ -15,9 +15,12 @@
         .container { max-width: 600px; margin: 0 auto; padding-bottom: 80px; }
         
         /* 認証 */
-        #auth-container { display: flex; align-items: center; justify-content: center; height: 90vh; }
+        #auth-container { display: flex; align-items: center; justify-content: center; height: 90vh; position: relative; }
         .auth-box { background: white; padding: 30px; border-radius: 25px; width: 85%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         #auth-error { color: var(--danger); font-size: 0.85rem; margin: 15px 0; background: #ffebee; padding: 10px; border-radius: 8px; display: none; text-align: left; }
+        
+        /* バージョン表記 */
+        .version-tag { position: absolute; right: 10px; bottom: 10px; font-size: 10px; color: #999; }
 
         /* メイン */
         .monthly-stats { background: var(--primary); color: white; padding: 20px; border-radius: 20px; margin-bottom: 15px; text-align: center; }
@@ -58,11 +61,12 @@
 <div id="auth-container">
     <div class="auth-box">
         <h2 style="color:var(--primary)">RUN DIARY</h2>
-        <input type="email" id="email" placeholder="メールアドレス">
-        <input type="password" id="password" placeholder="パスワード(6文字以上)">
+        <input type="email" id="email" placeholder="メールアドレス" autocomplete="email">
+        <input type="password" id="password" placeholder="パスワード(6文字以上)" autocomplete="current-password">
         <button id="auth-btn" class="btn" style="background:var(--primary); color:white;">ログイン / 新規登録</button>
         <div id="auth-error"></div>
     </div>
+    <div class="version-tag">ver 1.0.4 (Login Fix)</div>
 </div>
 
 <div id="app-container" class="container hidden">
@@ -175,26 +179,39 @@
     const authBtn = document.getElementById('auth-btn');
     const errDiv = document.getElementById('auth-error');
 
-    // 認証処理の安定化
+    // ログイン処理の再修正
     authBtn.onclick = async () => {
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
         errDiv.style.display = 'none';
-        if (!email || !password) return;
+        
+        if (!email || !password) {
+            showError("メールとパスワードを入力してください");
+            return;
+        }
+
         authBtn.disabled = true;
-        authBtn.innerText = "通信中...";
+        authBtn.innerText = "認証中...";
+
         try {
+            // まずログインを試行
             await auth.signInWithEmailAndPassword(email, password);
         } catch (err) {
-            // ログインに失敗したら新規登録を試みる
-            try {
-                await auth.createUserWithEmailAndPassword(email, password);
-            } catch (regErr) {
-                showError("認証エラー: " + regErr.message);
+            console.error(err.code);
+            // ユーザーが存在しない、または特定のログインエラーの場合に新規登録を試行
+            if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-login-credentials') {
+                try {
+                    await auth.createUserWithEmailAndPassword(email, password);
+                } catch (regErr) {
+                    showError("認証に失敗しました: " + regErr.message);
+                }
+            } else {
+                showError("エラー: " + err.message);
             }
+        } finally {
+            authBtn.disabled = false;
+            authBtn.innerText = "ログイン / 新規登録";
         }
-        authBtn.disabled = false;
-        authBtn.innerText = "ログイン / 新規登録";
     };
 
     auth.onAuthStateChanged(user => {
@@ -212,9 +229,13 @@
 
     async function loadCloudData() {
         if(!auth.currentUser) return;
-        const snap = await db.collection('users').doc(auth.currentUser.uid).collection('diaries').get();
-        cachedDiaries = snap.docs.map(doc => doc.data());
-        renderCalendar();
+        try {
+            const snap = await db.collection('users').doc(auth.currentUser.uid).collection('diaries').get();
+            cachedDiaries = snap.docs.map(doc => doc.data());
+            renderCalendar();
+        } catch (e) {
+            console.error("Data Load Error", e);
+        }
     }
 
     function renderCalendar() {
@@ -334,14 +355,4 @@
             dist = (d * c) / 1000;
             detail = `${d}m×${c} (T:${document.getElementById('rt-time').value}s / R:${document.getElementById('rt-rest').value}s)`;
         } else if (menu === 'インターバル') {
-            detail = `${document.getElementById('int-dist-v2').value} / ${document.getElementById('int-time-v2').value}`;
-        }
-        const btn = document.getElementById('save-btn');
-        btn.disabled = true; btn.innerText = "保存中...";
-        let w = "☁️--";
-        try {
-            const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:2000}));
-            const wr = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&hourly=weathercode,temperature_2m&start_date=${selectedDateStr}&end_date=${selectedDateStr}&timezone=Asia%2FTokyo`);
-            const wd = await wr.json();
-            const h = parseInt(document.getElementById('start-time').value.split(':')[0]);
-            w = ({0:"☀️",1:"🌤️",2:"⛅",3
+            detail = `
