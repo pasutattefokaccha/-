@@ -111,8 +111,15 @@
 
             <!-- 履歴リスト -->
             <div class="space-y-4 max-h-[400px] overflow-y-auto pr-1">
-                <div v-for="run in filteredRuns" :key="run.id" class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:border-indigo-200 transition-all">
-                    <div class="flex justify-between items-start mb-2">
+                <div v-for="run in filteredRuns" :key="run.id" class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:border-indigo-200 transition-all relative group">
+                    <!-- 削除ボタン -->
+                    <button @click="deleteRun(run.id)" class="absolute top-3 right-3 text-slate-300 hover:text-red-500 transition-colors p-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+
+                    <div class="flex justify-between items-start mb-2 pr-6">
                         <span class="text-[9px] font-black bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded uppercase tracking-tighter">{{ run.mode }}</span>
                         <span class="text-[10px] text-slate-300 font-mono font-bold">{{ formatDate(run.created_at) }}</span>
                     </div>
@@ -159,10 +166,8 @@
 
                 const autoCalc = () => {
                     if (['TT', 'レストトレーニング'].includes(form.value.mode)) return;
-                    
                     const distRaw = parseFloat(form.value.distance);
-                    const distKm = form.value.unit === 'm' ? distRaw / 1000 : distRaw; // mなら1000で割って計算
-                    
+                    const distKm = form.value.unit === 'm' ? distRaw / 1000 : distRaw;
                     const dur = getSec(form.value.dur_m, form.value.dur_s);
                     const pace = getSec(form.value.pace_m, form.value.pace_s);
 
@@ -182,7 +187,6 @@
                 };
 
                 const changeMode = (m) => {
-                    const currentUnit = form.value.unit;
                     form.value.mode = m;
                     Object.keys(form.value).forEach(k => { if(k !== 'mode' && k !== 'unit') form.value[k] = '' });
                 };
@@ -190,6 +194,18 @@
                 const fetchRuns = async () => {
                     const { data } = await _supabase.from('runs').select('*').order('created_at', { ascending: false });
                     if (data) runs.value = data;
+                };
+
+                const deleteRun = async (id) => {
+                    if (!confirm('この記録を削除しますか？')) return;
+                    loading.value = true;
+                    const { error } = await _supabase.from('runs').delete().eq('id', id);
+                    if (!error) {
+                        await fetchRuns();
+                    } else {
+                        alert('削除に失敗しました: ' + error.message);
+                    }
+                    loading.value = false;
                 };
 
                 const filteredRuns = computed(() => {
@@ -200,21 +216,16 @@
                 const saveRun = async () => {
                     if (!form.value.distance && form.value.mode !== 'レストトレーニング') return alert('距離を入れてね！');
                     loading.value = true;
-                    
                     const distRaw = parseFloat(form.value.distance) || 0;
                     const finalDistKm = form.value.unit === 'm' ? distRaw / 1000 : distRaw;
-
                     const durationStr = (form.value.dur_m || form.value.dur_s) ? `${form.value.dur_m || 0}:${(form.value.dur_s || 0).toString().padStart(2,'0')}` : null;
                     const paceStr = (form.value.pace_m || form.value.pace_s) ? `${form.value.pace_m || 0}:${(form.value.pace_s || 0).toString().padStart(2,'0')}` : null;
 
                     const { error } = await _supabase.from('runs').insert([{
-                        mode: form.value.mode,
-                        distance: finalDistKm,
-                        duration: durationStr,
+                        mode: form.value.mode, distance: finalDistKm, duration: durationStr,
                         sets: form.value.sets ? parseInt(form.value.sets) : null,
                         rest: form.value.rest ? form.value.rest.toString() : null,
-                        pace: paceStr,
-                        note: form.value.note
+                        pace: paceStr, note: form.value.note
                     }]);
 
                     if (!error) { await fetchRuns(); changeMode(form.value.mode); }
@@ -228,7 +239,7 @@
                 };
 
                 onMounted(fetchRuns);
-                return { modes, form, runs, searchQuery, filteredRuns, loading, saveRun, formatDate, autoCalc, changeMode, formatTimeDisplay };
+                return { modes, form, runs, searchQuery, filteredRuns, loading, saveRun, deleteRun, formatDate, autoCalc, changeMode, formatTimeDisplay };
             }
         }).mount('#app');
     </script>
