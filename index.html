@@ -3,372 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUN DIARY - Firebase Debug</title>
-    
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-firestore-compat.js"></script>
-    
-    <style>
-        :root { --primary: #007AFF; --bg: #f2f2f7; --card: #ffffff; --today: #fff9c4; --danger: #ff3b30; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding-bottom: 80px; }
-        
-        .monthly-stats { background: var(--primary); color: white; padding: 15px; border-radius: 15px; margin-bottom: 10px; text-align: center; }
-        .monthly-stats-value { font-size: 1.8rem; font-weight: bold; }
-
-        .cal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: white; border-radius: 15px 15px 0 0; }
-        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); background: white; border-radius: 0 0 15px 15px; border-top: 1px solid #eee; overflow: hidden; }
-        .day-label { text-align: center; font-size: 0.7rem; color: #888; padding: 10px 0; }
-        .day { min-height: 85px; padding: 5px; border-right: 1px solid #f0f0f0; border-bottom: 1px solid #f0f0f0; cursor: pointer; }
-        .day-num { font-size: 0.8rem; font-weight: bold; }
-        .today { background: var(--today) !important; }
-        
-        .cal-record { font-size: 0.6rem; margin-top: 4px; padding: 2px 4px; border-radius: 4px; }
-        .bg-jog { background-color: #e3f2fd; color: #1565c0; border-left: 3px solid #1565c0; }
-        .bg-interval { background-color: #ffebee; color: #c62828; border-left: 3px solid #c62828; }
-        .bg-tt { background-color: #fffde7; color: #f9a825; border-left: 3px solid #f9a825; }
-        .bg-pace { background-color: #f1f8e9; color: #2e7d32; border-left: 3px solid #2e7d32; }
-        .bg-bu { background-color: #f3e5f5; color: #7b1fa2; border-left: 3px solid #7b1fa2; }
-        .bg-rest { background-color: #eeeeee; color: #616161; }
-        .bg-other { background-color: #e0f7fa; color: #00838f; }
-
-        .search-fab { position: fixed; right: 20px; bottom: 20px; width: 60px; height: 60px; background: var(--primary); color: white; border-radius: 30px; display: flex; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; z-index: 90; }
-        .add-fab { position: fixed; right: 90px; bottom: 20px; width: 60px; height: 60px; background: #34c759; color: white; border-radius: 30px; display: flex; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; z-index: 90; }
-
-        #entry-modal, #search-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; overflow-y: auto; }
-        .modal-content { background: white; margin: 5% auto; width: 90%; max-width: 450px; padding: 20px; border-radius: 20px; }
-        
-        input, select, textarea { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #eee; border-radius: 10px; box-sizing: border-box; font-size: 1rem; }
-        .btn { width: 100%; padding: 14px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .btn-save { background: var(--primary); color: white; }
-        .btn-cancel { background: #eee; color: #666; }
-        .btn-delete { background: none; color: var(--danger); font-size: 0.9rem; margin-top: 20px; }
-        .hidden { display: none !important; }
-        .dynamic-section { background: #f9f9f9; padding: 10px; border-radius: 10px; margin-top: 10px; border-left: 4px solid var(--primary); }
-        .result-box { margin-top: 10px; padding: 10px; background: #eef6ff; border-radius: 10px; font-size: 0.9rem; font-weight: bold; color: var(--primary); }
-    </style>
+    <title>Running Share</title>
+    <!-- CSS: Tailwind CSS (デザイン) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- JS: Vue.js (動く仕組み) -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- JS: Supabase (データベース) -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
-<body>
+<body class="bg-gray-100 p-4">
+    <div id="app" class="max-w-md mx-auto bg-white p-6 rounded-xl shadow-lg">
+        <h1 class="text-2xl font-bold text-center mb-6">🏃‍♂️ ラン記録共有</h1>
 
-<div id="app-container" class="container">
-    <div class="monthly-stats">
-        <div id="stats-month-label">今月の合計距離</div>
-        <div class="monthly-stats-value"><span id="month-total-val">0.00</span> <small>km</small></div>
-    </div>
-    <div class="cal-header">
-        <button onclick="changeMonth(-1)">＜</button>
-        <div id="current-month-display"></div>
-        <button onclick="changeMonth(1)">＞</button>
-    </div>
-    <div class="calendar" id="calendar-grid"></div>
-</div>
-
-<button class="add-fab" id="fab-add" onclick="openModal(new Date().toISOString().split('T')[0], true)">＋</button>
-<button class="search-fab" id="fab-search" onclick="openSearch()">🔍</button>
-
-<div id="entry-modal">
-    <div class="modal-content">
-        <h3 id="modal-date-title"></h3>
-        <label>走行時間</label>
-        <div style="display:flex; gap:10px;"><input type="time" id="start-time" oninput="calcJog()"><span>〜</span><input type="time" id="end-time"></div>
-        <label>メニュー</label>
-        <select id="menu-select" onchange="toggleMenuFields()">
-            <option value="ジョグ">ジョグ</option>
-            <option value="インターバル">インターバル</option>
-            <option value="タイムトライアル">タイムトライアル</option>
-            <option value="ペース走">ペース走</option>
-            <option value="ビルドアップ">ビルドアップ</option>
-            <option value="レスト">レスト</option>
-            <option value="その他">その他</option>
-        </select>
-        <div id="fields-jog" class="dynamic-section">
-            <input type="number" id="jog-dist" step="0.01" placeholder="距離(km)" oninput="calcJog()">
-            <input type="number" id="jog-min" placeholder="時間(分)" oninput="calcJog()">
-            <div id="jog-res" class="result-box">平均ペース: --:--/km</div>
-        </div>
-        <div id="fields-int" class="dynamic-section" style="display:none;">
-            <input type="number" id="int-dist" step="0.01" placeholder="1本の距離(km)" oninput="calcInt()">
-            <input type="number" id="int-count" placeholder="本数" oninput="calcInt()">
-            <input type="text" id="int-rest" placeholder="つなぎの内容">
-            <div id="int-res" class="result-box">走行合計: 0.00 km</div>
-        </div>
-        <div id="fields-tt" class="dynamic-section" style="display:none;">
-            <input type="number" id="tt-dist-km" step="0.01" placeholder="距離(km)">
-            <div style="display:flex; gap:5px;">
-                <input type="number" id="tt-min" placeholder="分">
-                <input type="number" id="tt-sec" placeholder="秒">
-                <input type="number" id="tt-msec" placeholder="秒(少数)">
+        <!-- 入力フォーム -->
+        <div class="space-y-3 mb-8">
+            <input v-model="newName" type="text" placeholder="名前" class="w-full border p-2 rounded">
+            <div class="flex gap-2">
+                <input v-model="newDistance" type="number" step="0.1" placeholder="距離(km)" class="flex-1 border p-2 rounded">
+                <button @click="saveRun" class="bg-blue-500 text-white px-4 py-2 rounded font-bold">記録！</button>
             </div>
         </div>
-        <div id="fields-pace" class="dynamic-section" style="display:none;">
-            <input type="number" id="pace-dist" placeholder="距離(km)">
-            <input type="text" id="pace-val" placeholder="設定ペース">
+
+        <!-- 記録一覧 -->
+        <div class="space-y-4">
+            <div v-for="run in runs" :key="run.id" class="border-b pb-2 flex justify-between items-center">
+                <div>
+                    <div class="font-bold text-lg">{{ run.distance }} km</div>
+                    <div class="text-sm text-gray-500">{{ run.name }}</div>
+                </div>
+                <div class="text-xs text-gray-400">{{ formatDate(run.date) }}</div>
+            </div>
         </div>
-        <div id="fields-bu" class="dynamic-section" style="display:none;">
-            <input type="number" id="bu-dist" placeholder="距離(km)">
-            <input type="text" id="bu-start" placeholder="開始ペース">
-            <input type="text" id="bu-end" placeholder="終了ペース">
-        </div>
-        <div id="fields-other" class="dynamic-section" style="display:none;">
-            <input type="number" id="other-dist" placeholder="距離(km)">
-            <input type="text" id="other-menu-name" placeholder="メニュー名">
-            <textarea id="other-content" placeholder="内容" style="height:60px;"></textarea>
-        </div>
-        <button class="btn btn-save" id="save-btn" onclick="saveDiary()">日誌を保存（天気取得）</button>
-        <button class="btn btn-cancel" onclick="closeModal()">キャンセル</button>
-        <button class="btn btn-delete" id="delete-btn" onclick="deleteDiary()" style="display:none;">この日の記録を削除</button>
     </div>
-</div>
 
-<div id="search-modal">
-    <div class="modal-content">
-        <h3>TT記録検索</h3>
-        <input type="number" id="search-query" step="0.01" placeholder="検索距離(km)" oninput="searchTT()">
-        <div id="search-results" style="margin-top:20px; max-height:300px; overflow-y:auto;"></div>
-        <button class="btn btn-cancel" onclick="closeSearch()">閉じる</button>
-    </div>
-</div>
+    <script>
+        // --- 設定：SupabaseのURLとキーに書き換えてください ---
+        const SUPABASE_URL = 'あなたのURL';
+        const SUPABASE_KEY = 'あなたのAPIキー';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-<script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyC0VeVEdEpcRP8dOvJokXq0lg2gBzloVls",
-        authDomain: "runnikki-a7d37.firebaseapp.com",
-        projectId: "runnikki-a7d37",
-        storageBucket: "runnikki-a7d37.firebasestorage.app",
-        messagingSenderId: "623990853537",
-        appId: "1:623990853537:web:68417f21002106b5c745e0"
-    };
+        const { createApp, ref, onMounted } = Vue;
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+        createApp({
+            setup() {
+                const runs = ref([]);
+                const newName = ref('');
+                const newDistance = ref('');
 
-    let currentViewDate = new Date();
-    let selectedDateStr = "";
-    let cachedDiaries = [];
+                // データを取得する
+                const fetchRuns = async () => {
+                    const { data } = await supabase.from('runs').select('*').order('date', { ascending: false });
+                    runs.value = data;
+                };
 
-    window.addEventListener('DOMContentLoaded', () => {
-        loadCloudData();
-    });
+                // データを保存する
+                const saveRun = async () => {
+                    if (!newName.value || !newDistance.value) return alert('入力してください');
+                    await supabase.from('runs').insert([{ name: newName.value, distance: parseFloat(newDistance.value) }]);
+                    newName.value = '';
+                    newDistance.value = '';
+                    fetchRuns();
+                };
 
-    async function loadCloudData() {
-        try {
-            const snap = await db.collection('diaries').get();
-            cachedDiaries = snap.docs.map(doc => doc.data());
-            renderCalendar();
-        } catch(e) { 
-            console.error(e);
-            renderCalendar(); 
-        }
-    }
+                const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString();
 
-    function renderCalendar() {
-        const grid = document.getElementById('calendar-grid');
-        if (!grid) return;
-        grid.innerHTML = "";
-        const year = currentViewDate.getFullYear();
-        const month = currentViewDate.getMonth();
-        document.getElementById('current-month-display').innerText = `${year}年 ${month + 1}月`;
-        ['日','月','火','水','木','金','土'].forEach(l => {
-            const el = document.createElement('div'); el.className = 'day-label'; el.innerText = l; grid.appendChild(el);
-        });
-        const firstDay = new Date(year, month, 1).getDay();
-        const lastDate = new Date(year, month + 1, 0).getDate();
-        for (let i = 0; i < firstDay; i++) grid.appendChild(document.createElement('div'));
-        let monthlyTotal = 0;
-        for (let d = 1; d <= lastDate; d++) {
-            const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
-            const dayEl = document.createElement('div'); dayEl.className = 'day';
-            if (new Date().toISOString().split('T')[0] === dateStr) dayEl.classList.add('today');
-            
-            const dayNumEl = document.createElement('div');
-            dayNumEl.className = 'day-num';
-            dayNumEl.innerText = d;
-            dayEl.appendChild(dayNumEl);
+                onMounted(fetchRuns);
 
-            const record = cachedDiaries.find(item => item.date === dateStr);
-            if (record) {
-                const recordEl = document.createElement('div');
-                recordEl.className = `cal-record ${getColorClass(record.type)}`;
-                recordEl.style.pointerEvents = 'none';
-                recordEl.innerHTML = `<span style="font-weight:bold">${record.dist}k</span>`;
-                dayEl.appendChild(recordEl);
-                monthlyTotal += parseFloat(record.dist);
-                
-                // 記録がある場合のみ閲覧・削除用に開ける
-                dayEl.onclick = () => openModal(dateStr, false);
-            } else {
-                // 記録がない場合はクリックしても何もしない
-                dayEl.style.cursor = 'default';
+                return { runs, newName, newDistance, saveRun, formatDate };
             }
-            grid.appendChild(dayEl);
-        }
-        document.getElementById('month-total-val').innerText = monthlyTotal.toFixed(2);
-    }
-
-    function toggleMenuFields() {
-        const menu = document.getElementById('menu-select').value;
-        ['fields-jog', 'fields-int', 'fields-tt', 'fields-pace', 'fields-bu', 'fields-other'].forEach(id => document.getElementById(id).style.display = 'none');
-        if(menu === 'ジョグ') document.getElementById('fields-jog').style.display = 'block';
-        if(menu === 'インターバル' || menu === 'レスト') document.getElementById('fields-int').style.display = 'block';
-        if(menu === 'タイムトライアル') document.getElementById('fields-tt').style.display = 'block';
-        if(menu === 'ペース走') document.getElementById('fields-pace').style.display = 'block';
-        if(menu === 'ビルドアップ') document.getElementById('fields-bu').style.display = 'block';
-        if(menu === 'その他') document.getElementById('fields-other').style.display = 'block';
-    }
-
-    function calcJog() {
-        const d = parseFloat(document.getElementById('jog-dist').value);
-        const m = parseFloat(document.getElementById('jog-min').value);
-        const startTime = document.getElementById('start-time').value;
-
-        if(d > 0 && m > 0) {
-            const paceSec = (m * 60) / d;
-            const min = Math.floor(paceSec / 60);
-            const sec = Math.round(paceSec % 60);
-            document.getElementById('jog-res').innerText = `平均ペース: ${min}:${sec.toString().padStart(2,'0')}/km`;
-        }
-
-        if(startTime && m > 0) {
-            const [h, min] = startTime.split(':').map(Number);
-            const date = new Date();
-            date.setHours(h);
-            date.setMinutes(min + m);
-            
-            const endH = date.getHours().toString().padStart(2, '0');
-            const endM = date.getMinutes().toString().padStart(2, '0');
-            document.getElementById('end-time').value = `${endH}:${endM}`;
-        }
-    }
-
-    function calcInt() {
-        const d = parseFloat(document.getElementById('int-dist').value) || 0;
-        const c = parseFloat(document.getElementById('int-count').value) || 0;
-        document.getElementById('int-res').innerText = `走行合計: ${(d * c).toFixed(2)} km`;
-    }
-
-    function getColorClass(type) {
-        const classes = { 'ジョグ':'bg-jog', 'インターバル':'bg-interval', 'タイムトライアル':'bg-tt', 'ペース走':'bg-pace', 'ビルドアップ':'bg-bu', 'レスト':'bg-rest' };
-        return classes[type] || 'bg-other';
-    }
-
-    function clearInputs() {
-        document.querySelectorAll('#entry-modal input, #entry-modal textarea').forEach(el => el.value = "");
-        document.getElementById('menu-select').value = "ジョグ";
-        document.getElementById('jog-res').innerText = "平均ペース: --:--/km";
-        document.getElementById('int-res').innerText = "走行合計: 0.00 km";
-    }
-
-    function openModal(dateStr, isNewEntry) {
-        selectedDateStr = dateStr;
-        document.getElementById('modal-date-title').innerText = dateStr.replace(/-/g, '/');
-        clearInputs();
-        
-        const record = cachedDiaries.find(item => item.date === dateStr);
-        if (record) {
-            document.getElementById('menu-select').value = record.type;
-            if (record.type === 'ジョグ') {
-                document.getElementById('jog-dist').value = record.dist;
-            } else if (record.type === 'インターバル' || record.type === 'レスト') {
-                const parts = record.detail.split('k×');
-                document.getElementById('int-dist').value = parts[0];
-                document.getElementById('int-count').value = parts[1];
-                calcInt();
-            } else if (record.type === 'タイムトライアル') {
-                document.getElementById('tt-dist-km').value = record.dist;
-                if(record.ttTime) {
-                    const t = record.ttTime.split(/[:.]/);
-                    document.getElementById('tt-min').value = t[0] || "";
-                    document.getElementById('tt-sec').value = t[1] || "";
-                    document.getElementById('tt-msec').value = t[2] || "";
-                }
-            } else if (record.type === 'ペース走') {
-                document.getElementById('pace-dist').value = record.dist;
-                document.getElementById('pace-val').value = record.detail.replace('ペース走: ', '');
-            } else if (record.type === 'ビルドアップ') {
-                document.getElementById('bu-dist').value = record.dist;
-                const buParts = record.detail.replace('BU: ', '').split('〜');
-                document.getElementById('bu-start').value = buParts[0];
-                document.getElementById('bu-end').value = buParts[1];
-            } else if (record.type === 'その他') {
-                document.getElementById('other-dist').value = record.dist;
-                document.getElementById('other-content').value = record.detail;
-            }
-            document.getElementById('delete-btn').style.display = 'block';
-            document.getElementById('save-btn').style.display = 'block';
-        } else if (isNewEntry) {
-            document.getElementById('delete-btn').style.display = 'none';
-            document.getElementById('save-btn').style.display = 'block';
-        } else {
-            return; // 記録がなく、新規作成でもない場合は開かない
-        }
-        
-        document.getElementById('entry-modal').style.display = 'block';
-        toggleMenuFields();
-        if(record && record.type === 'ジョグ') calcJog();
-    }
-
-    function closeModal() { document.getElementById('entry-modal').style.display = 'none'; }
-    function openSearch() { document.getElementById('search-modal').style.display = 'block'; }
-    function closeSearch() { document.getElementById('search-modal').style.display = 'none'; }
-    function changeMonth(diff) { currentViewDate.setMonth(currentViewDate.getMonth() + diff); renderCalendar(); }
-    
-    function searchTT() {
-        const queryVal = parseFloat(document.getElementById('search-query').value);
-        const resultsDiv = document.getElementById('search-results');
-        const filtered = cachedDiaries.filter(d => d.type === 'タイムトライアル' && parseFloat(d.dist) === queryVal);
-        resultsDiv.innerHTML = filtered.map(d => `<div style="padding:10px; border-bottom:1px solid #eee;">${d.date}: ${d.ttTime}</div>`).join('');
-    }
-
-    async function saveDiary() {
-        const menuType = document.getElementById('menu-select').value;
-        let dist = 0, detail = "", ttTime = "";
-        if (menuType === 'ジョグ') {
-            dist = parseFloat(document.getElementById('jog-dist').value);
-            detail = document.getElementById('jog-res').innerText;
-        } else if (menuType === 'インターバル' || menuType === 'レスト') {
-            const d = parseFloat(document.getElementById('int-dist').value) || 0;
-            const c = parseFloat(document.getElementById('int-count').value) || 0;
-            dist = d * c;
-            detail = `${d}k×${c}`;
-        } else if (menuType === 'タイムトライアル') {
-            dist = parseFloat(document.getElementById('tt-dist-km').value) || 0;
-            ttTime = `${document.getElementById('tt-min').value}:${document.getElementById('tt-sec').value}.${document.getElementById('tt-msec').value}`;
-            detail = `${dist}k TT [${ttTime}]`;
-        } else if (menuType === 'ペース走') {
-            dist = parseFloat(document.getElementById('pace-dist').value) || 0;
-            detail = `ペース走: ${document.getElementById('pace-val').value}`;
-        } else if (menuType === 'ビルドアップ') {
-            dist = parseFloat(document.getElementById('bu-dist').value) || 0;
-            detail = `BU: ${document.getElementById('bu-start').value}〜${document.getElementById('bu-end').value}`;
-        } else if (menuType === 'その他') {
-            dist = parseFloat(document.getElementById('other-dist').value) || 0;
-            detail = document.getElementById('other-content').value;
-        }
-
-        const data = {
-            date: selectedDateStr,
-            type: menuType,
-            dist: dist || 0,
-            detail: detail,
-            ttTime: ttTime,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-
-        try {
-            await db.collection('diaries').doc(selectedDateStr).set(data);
-            closeModal();
-            loadCloudData();
-        } catch(e) { alert("保存失敗: " + e.message); }
-    }
-
-    async function deleteDiary() {
-        if(!confirm("この日の記録を削除しますか？")) return;
-        try {
-            await db.collection('diaries').doc(selectedDateStr).delete();
-            closeModal();
-            loadCloudData();
-        } catch(e) { alert("削除失敗: " + e.message); }
-    }
-</script>
+        }).mount('#app');
+    </script>
 </body>
 </html>
