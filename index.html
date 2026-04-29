@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Running Log Pro</title>
+    <title>ラン日誌 Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
@@ -14,8 +14,10 @@
 </head>
 <body class="bg-slate-50 min-h-screen p-4 font-sans text-slate-900">
     <div id="app" class="max-w-md mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
+        <!-- ヘッダー -->
         <div class="bg-gradient-to-br from-indigo-700 to-blue-500 p-6 text-white text-center">
-            <h1 class="text-2xl font-black italic tracking-widest uppercase">Running Log</h1>
+            <h1 class="text-3xl font-black italic tracking-tighter">ラン日誌</h1>
+            <p class="text-[10px] uppercase opacity-70 mt-1 tracking-widest font-bold">Running Training Log</p>
         </div>
 
         <div class="p-6">
@@ -34,10 +36,18 @@
             <div class="space-y-5 bg-slate-50 p-5 rounded-2xl border border-slate-100 mb-6 shadow-inner text-sm">
                 <h2 class="text-center font-black text-indigo-600 text-sm italic tracking-widest uppercase italic">Entry: {{ form.mode }}</h2>
                 
-                <!-- 距離 -->
+                <!-- 距離 ＋ 単位選択 -->
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">距離 (km)</label>
-                    <input v-model="form.distance" @input="autoCalc" type="number" step="0.1" placeholder="0.0" class="w-full border-b-2 border-slate-200 bg-transparent p-1 text-xl font-bold outline-none focus:border-indigo-500 transition-all">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">距離</label>
+                    <div class="flex items-end gap-2">
+                        <div class="flex-1">
+                            <input v-model="form.distance" @input="autoCalc" type="number" step="0.01" placeholder="0.0" class="w-full border-b-2 border-slate-200 bg-transparent p-1 text-xl font-bold outline-none focus:border-indigo-500 transition-all text-right">
+                        </div>
+                        <select v-model="form.unit" @change="autoCalc" class="bg-white border-2 border-slate-200 rounded-lg px-2 py-1 font-bold text-xs outline-none focus:border-indigo-500">
+                            <option value="km">km</option>
+                            <option value="m">m</option>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- タイム (分・秒 別枠) -->
@@ -57,20 +67,20 @@
 
                 <!-- ペース計算 (ジョグ、ペース走、ビルドアップ用) -->
                 <div v-if="['ジョグ', 'ペース走', 'ビルドアップ'].includes(form.mode)">
-                    <label class="text-[10px] font-bold text-indigo-500 uppercase tracking-tighter">ペース (/km)</label>
+                    <label class="text-[10px] font-bold text-indigo-500 uppercase tracking-tighter">計算ペース (/km)</label>
                     <div class="flex items-end gap-2 text-indigo-600">
                         <div class="flex-1">
-                            <input v-model="form.pace_m" @input="autoCalc" type="number" class="w-full border-b-2 border-slate-300 bg-transparent p-1 text-lg font-bold outline-none focus:border-indigo-500 text-right">
+                            <input v-model="form.pace_m" @input="autoCalc" type="number" class="w-full border-b-2 border-slate-300 bg-transparent p-1 text-lg font-bold outline-none focus:border-indigo-500 text-right font-mono">
                         </div>
                         <span class="font-bold pb-1 text-xs">分</span>
                         <div class="flex-1">
-                            <input v-model="form.pace_s" @input="autoCalc" type="number" class="w-full border-b-2 border-slate-300 bg-transparent p-1 text-lg font-bold outline-none focus:border-indigo-500 text-right">
+                            <input v-model="form.pace_s" @input="autoCalc" type="number" class="w-full border-b-2 border-slate-300 bg-transparent p-1 text-lg font-bold outline-none focus:border-indigo-500 text-right font-mono">
                         </div>
                         <span class="font-bold pb-1 text-xs">秒</span>
                     </div>
                 </div>
 
-                <!-- セット数・レスト時間 (インターバル、レストトレーニング用) -->
+                <!-- セット数・休憩 (インターバル、レストトレーニング用) -->
                 <div v-if="['インターバル', 'レストトレーニング'].includes(form.mode)" class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="text-[10px] font-bold text-slate-400 uppercase">本数 (sets)</label>
@@ -85,11 +95,11 @@
                 <!-- メモ -->
                 <div>
                     <label class="text-[10px] font-bold text-slate-400 uppercase">メモ</label>
-                    <textarea v-model="form.note" rows="2" class="w-full border-2 border-slate-200 rounded-lg bg-white p-2 outline-none focus:border-indigo-500 text-xs mt-1 font-medium" placeholder="感想など..."></textarea>
+                    <textarea v-model="form.note" rows="2" class="w-full border-2 border-slate-200 rounded-lg bg-white p-2 outline-none focus:border-indigo-500 text-xs mt-1 font-medium shadow-sm" placeholder="感想など..."></textarea>
                 </div>
 
-                <button @click="saveRun" :disabled="loading" class="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-lg hover:bg-indigo-700 active:scale-95 transition-all disabled:bg-slate-300 mt-2 tracking-widest uppercase">
-                    {{ loading ? 'SENDING...' : 'Record Run' }}
+                <button @click="saveRun" :disabled="loading" class="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-lg hover:bg-indigo-700 active:scale-95 transition-all disabled:bg-slate-300 mt-2 tracking-tighter text-xl">
+                    {{ loading ? '送信中...' : '記録！！' }}
                 </button>
             </div>
 
@@ -104,17 +114,17 @@
                 <div v-for="run in filteredRuns" :key="run.id" class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:border-indigo-200 transition-all">
                     <div class="flex justify-between items-start mb-2">
                         <span class="text-[9px] font-black bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded uppercase tracking-tighter">{{ run.mode }}</span>
-                        <span class="text-[10px] text-slate-300 font-mono">{{ formatDate(run.created_at) }}</span>
+                        <span class="text-[10px] text-slate-300 font-mono font-bold">{{ formatDate(run.created_at) }}</span>
                     </div>
-                    <div class="text-3xl font-black text-slate-800 tracking-tighter">{{ run.distance }} <span class="text-xs font-normal text-slate-400 uppercase">km</span></div>
+                    <div class="text-3xl font-black text-slate-800 tracking-tighter">{{ run.distance }} <span class="text-xs font-normal text-slate-400 uppercase font-bold">km</span></div>
                     <div class="text-[10px] text-slate-500 mt-1 flex flex-wrap gap-x-4 gap-y-1 font-black uppercase">
-                        <span v-if="run.duration" class="flex items-center gap-1 text-slate-700 font-bold italic underline decoration-indigo-300 decoration-2 italic">⏱ {{ formatTimeDisplay(run.duration) }}</span>
-                        <span v-if="run.pace && !['TT', 'レストトレーニング'].includes(run.mode)" class="text-indigo-500 italic decoration-indigo-300 decoration-2 italic">📈 {{ formatTimeDisplay(run.pace) }}/km</span>
-                        <span v-if="run.sets" class="text-emerald-500">⚡ {{ run.sets }} sets</span>
-                        <span v-if="run.rest" class="text-amber-500">🧘 {{ run.rest }}s rest</span>
+                        <span v-if="run.duration" class="flex items-center gap-1 text-slate-700 font-bold italic underline decoration-indigo-200 decoration-2 italic text-[11px]">⏱ {{ formatTimeDisplay(run.duration) }}</span>
+                        <span v-if="run.pace && !['TT', 'レストトレーニング'].includes(run.mode)" class="text-indigo-500 italic decoration-indigo-200 decoration-2 italic text-[11px]">📈 {{ formatTimeDisplay(run.pace) }}/km</span>
+                        <span v-if="run.sets" class="text-emerald-500">⚡ {{ run.sets }}本</span>
+                        <span v-if="run.rest" class="text-amber-500 font-mono">🧘 {{ run.rest }}s rest</span>
                     </div>
-                    <div v-if="run.note" class="mt-3 text-[11px] text-slate-600 bg-slate-50 p-3 rounded-xl border-l-4 border-indigo-400 break-words font-medium leading-relaxed italic">
-                        "{{ run.note }}"
+                    <div v-if="run.note" class="mt-3 text-[11px] text-slate-600 bg-slate-50 p-3 rounded-xl border-l-4 border-indigo-400 break-words font-medium leading-relaxed shadow-sm">
+                        {{ run.note }}
                     </div>
                 </div>
             </div>
@@ -133,11 +143,11 @@
                 const runs = ref([]);
                 const loading = ref(false);
                 const searchQuery = ref('');
-                const form = ref({ mode: 'ジョグ', distance: '', dur_m: '', dur_s: '', pace_m: '', pace_s: '', sets: '', rest: '', note: '' });
+                const form = ref({ mode: 'ジョグ', distance: '', unit: 'km', dur_m: '', dur_s: '', pace_m: '', pace_s: '', sets: '', rest: '', note: '' });
 
                 const getSec = (m, s) => (parseInt(m || 0) * 60) + parseInt(s || 0);
                 const setFromSec = (total) => {
-                    if (!total || total <= 0) return { m: '', s: '' };
+                    if (!total || total <= 0 || !isFinite(total)) return { m: '', s: '' };
                     return { m: Math.floor(total / 60), s: Math.round(total % 60).toString().padStart(2, '0') };
                 };
 
@@ -149,27 +159,32 @@
 
                 const autoCalc = () => {
                     if (['TT', 'レストトレーニング'].includes(form.value.mode)) return;
-                    const dist = parseFloat(form.value.distance);
+                    
+                    const distRaw = parseFloat(form.value.distance);
+                    const distKm = form.value.unit === 'm' ? distRaw / 1000 : distRaw; // mなら1000で割って計算
+                    
                     const dur = getSec(form.value.dur_m, form.value.dur_s);
                     const pace = getSec(form.value.pace_m, form.value.pace_s);
 
-                    if (form.value.mode === 'ジョグ' && dist && dur) {
-                        const res = setFromSec(dur / dist);
+                    if (form.value.mode === 'ジョグ' && distKm && dur) {
+                        const res = setFromSec(dur / distKm);
                         form.value.pace_m = res.m; form.value.pace_s = res.s;
                     } else if (form.value.mode === 'ペース走') {
-                        if (dist && dur && (!form.value.pace_m && !form.value.pace_s)) {
-                            const res = setFromSec(dur / dist); form.value.pace_m = res.m; form.value.pace_s = res.s;
-                        } else if (dist && pace && (!form.value.dur_m && !form.value.dur_s)) {
-                            const res = setFromSec(dist * pace); form.value.dur_m = res.m; form.value.dur_s = res.s;
+                        if (distKm && dur && (!form.value.pace_m && !form.value.pace_s)) {
+                            const res = setFromSec(dur / distKm); form.value.pace_m = res.m; form.value.pace_s = res.s;
+                        } else if (distKm && pace && (!form.value.dur_m && !form.value.dur_s)) {
+                            const res = setFromSec(distKm * pace); form.value.dur_m = res.m; form.value.dur_s = res.s;
                         } else if (dur && pace && !form.value.distance) {
-                            form.value.distance = (dur / pace).toFixed(2);
+                            const calculatedDistKm = (dur / pace);
+                            form.value.distance = form.value.unit === 'm' ? (calculatedDistKm * 1000).toFixed(0) : calculatedDistKm.toFixed(2);
                         }
                     }
                 };
 
                 const changeMode = (m) => {
+                    const currentUnit = form.value.unit;
                     form.value.mode = m;
-                    Object.keys(form.value).forEach(k => { if(k !== 'mode') form.value[k] = '' });
+                    Object.keys(form.value).forEach(k => { if(k !== 'mode' && k !== 'unit') form.value[k] = '' });
                 };
 
                 const fetchRuns = async () => {
@@ -186,12 +201,15 @@
                     if (!form.value.distance && form.value.mode !== 'レストトレーニング') return alert('距離を入れてね！');
                     loading.value = true;
                     
+                    const distRaw = parseFloat(form.value.distance) || 0;
+                    const finalDistKm = form.value.unit === 'm' ? distRaw / 1000 : distRaw;
+
                     const durationStr = (form.value.dur_m || form.value.dur_s) ? `${form.value.dur_m || 0}:${(form.value.dur_s || 0).toString().padStart(2,'0')}` : null;
                     const paceStr = (form.value.pace_m || form.value.pace_s) ? `${form.value.pace_m || 0}:${(form.value.pace_s || 0).toString().padStart(2,'0')}` : null;
 
                     const { error } = await _supabase.from('runs').insert([{
                         mode: form.value.mode,
-                        distance: parseFloat(form.value.distance) || 0,
+                        distance: finalDistKm,
                         duration: durationStr,
                         sets: form.value.sets ? parseInt(form.value.sets) : null,
                         rest: form.value.rest ? form.value.rest.toString() : null,
