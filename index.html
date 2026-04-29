@@ -3,122 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ラン日誌</title>
+    <title>ラン日誌 Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
-        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1-fr); gap: 2px; }
-        .dot { width: 4px; height: 4px; border-radius: 50%; background-color: #6366f1; margin: 0 auto; }
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen p-4 font-sans text-slate-900">
-    <div id="app" class="max-w-md mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 min-h-[90vh]">
+    <div id="app" class="max-w-md mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
         <!-- ヘッダー -->
         <div class="bg-gradient-to-br from-indigo-700 to-blue-500 p-6 text-white text-center">
             <h1 class="text-3xl font-black italic tracking-tighter">ラン日誌</h1>
-            <div class="mt-2 inline-flex bg-white/20 rounded-full p-1 text-[10px] font-bold">
-                <button @click="view = 'calendar'" :class="view === 'calendar' ? 'bg-white text-indigo-600' : ''" class="px-4 py-1 rounded-full transition-all">カレンダー</button>
-                <button @click="view = 'entry'" :class="view === 'entry' ? 'bg-white text-indigo-600' : ''" class="px-4 py-1 rounded-full transition-all">+ 記録する</button>
-            </div>
+            <p class="text-[10px] uppercase opacity-70 mt-1 tracking-widest font-bold">Running Training Log</p>
         </div>
 
-        <div class="p-4">
-            <!-- 記録入力ビュー -->
-            <div v-if="view === 'entry'" class="space-y-4 bg-slate-50 p-5 rounded-2xl border border-slate-100 shadow-inner">
-                <div class="grid grid-cols-3 gap-2 mb-2">
-                    <button v-for="m in modes" :key="m" @click="changeMode(m)" :class="form.mode === m ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-200 text-slate-500'" class="text-[9px] py-2 rounded-lg font-black transition-all uppercase">{{ m }}</button>
+        <div class="p-6">
+            <!-- モード選択 -->
+            <div class="mb-4">
+                <div class="grid grid-cols-3 gap-2">
+                    <button v-for="m in modes" :key="m" @click="changeMode(m)"
+                        :class="form.mode === m ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'"
+                        class="text-[10px] py-2.5 rounded-xl font-black transition-all">
+                        {{ m }}
+                    </button>
                 </div>
+            </div>
+
+            <!-- 入力フォーム -->
+            <div class="space-y-5 bg-slate-50 p-5 rounded-2xl border border-slate-100 mb-6 shadow-inner text-sm">
+                <h2 class="text-center font-black text-indigo-600 text-sm italic tracking-widest uppercase italic">Entry: {{ form.mode }}</h2>
                 
-                <!-- 距離 ＋ 単位 -->
+                <!-- 距離 ＋ 単位選択 -->
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase">距離</label>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">距離</label>
                     <div class="flex items-end gap-2">
-                        <input v-model="form.distance" @input="autoCalc" type="number" step="0.01" class="flex-1 border-b-2 border-slate-200 bg-transparent p-1 text-xl font-bold outline-none focus:border-indigo-500 text-right">
+                        <div class="flex-1">
+                            <input v-model="form.distance" @input="autoCalc" type="number" step="0.01" placeholder="0.0" class="w-full border-b-2 border-slate-200 bg-transparent p-1 text-xl font-bold outline-none focus:border-indigo-500 transition-all text-right">
+                        </div>
                         <select v-model="form.unit" @change="autoCalc" class="bg-white border-2 border-slate-200 rounded-lg px-2 py-1 font-bold text-xs outline-none focus:border-indigo-500">
-                            <option value="km">km</option><option value="m">m</option>
+                            <option value="km">km</option>
+                            <option value="m">m</option>
                         </select>
                     </div>
                 </div>
 
-                <!-- タイム -->
+                <!-- タイム (分・秒 別枠) -->
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase">タイム</label>
-                    <div class="flex items-end gap-2 text-lg font-bold">
-                        <input v-model="form.dur_m" @input="autoCalc" type="number" placeholder="0" class="flex-1 border-b-2 border-slate-200 bg-transparent p-1 outline-none focus:border-indigo-500 text-right">
-                        <span class="text-xs pb-1">分</span>
-                        <input v-model="form.dur_s" @input="autoCalc" type="number" placeholder="00" class="flex-1 border-b-2 border-slate-200 bg-transparent p-1 outline-none focus:border-indigo-500 text-right">
-                        <span class="text-xs pb-1">秒</span>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">タイム</label>
+                    <div class="flex items-end gap-2">
+                        <div class="flex-1">
+                            <input v-model="form.dur_m" @input="autoCalc" type="number" placeholder="0" class="w-full border-b-2 border-slate-200 bg-transparent p-1 text-lg font-bold outline-none focus:border-indigo-500 text-right">
+                        </div>
+                        <span class="font-bold pb-1">分</span>
+                        <div class="flex-1">
+                            <input v-model="form.dur_s" @input="autoCalc" type="number" placeholder="00" class="w-full border-b-2 border-slate-200 bg-transparent p-1 text-lg font-bold outline-none focus:border-indigo-500 text-right">
+                        </div>
+                        <span class="font-bold pb-1">秒</span>
                     </div>
                 </div>
 
-                <!-- ペース計算 -->
+                <!-- ペース計算 (ジョグ、ペース走、ビルドアップ用) -->
                 <div v-if="['ジョグ', 'ペース走', 'ビルドアップ'].includes(form.mode)">
-                    <label class="text-[10px] font-bold text-indigo-500 uppercase italic">計算ペース (/km)</label>
-                    <div class="flex items-end gap-2 text-indigo-600 font-bold text-lg">
-                        <input v-model="form.pace_m" @input="autoCalc" type="number" class="flex-1 border-b-2 border-slate-300 bg-transparent p-1 outline-none focus:border-indigo-500 text-right">
-                        <span class="text-xs pb-1">分</span>
-                        <input v-model="form.pace_s" @input="autoCalc" type="number" class="flex-1 border-b-2 border-slate-300 bg-transparent p-1 outline-none focus:border-indigo-500 text-right">
-                        <span class="text-xs pb-1">秒</span>
+                    <label class="text-[10px] font-bold text-indigo-500 uppercase tracking-tighter">計算ペース (/km)</label>
+                    <div class="flex items-end gap-2 text-indigo-600">
+                        <div class="flex-1">
+                            <input v-model="form.pace_m" @input="autoCalc" type="number" class="w-full border-b-2 border-slate-300 bg-transparent p-1 text-lg font-bold outline-none focus:border-indigo-500 text-right font-mono">
+                        </div>
+                        <span class="font-bold pb-1 text-xs">分</span>
+                        <div class="flex-1">
+                            <input v-model="form.pace_s" @input="autoCalc" type="number" class="w-full border-b-2 border-slate-300 bg-transparent p-1 text-lg font-bold outline-none focus:border-indigo-500 text-right font-mono">
+                        </div>
+                        <span class="font-bold pb-1 text-xs">秒</span>
                     </div>
                 </div>
 
+                <!-- セット数・休憩 (インターバル、レストトレーニング用) -->
                 <div v-if="['インターバル', 'レストトレーニング'].includes(form.mode)" class="grid grid-cols-2 gap-4">
-                    <div><label class="text-[10px] font-bold text-slate-400">本数</label><input v-model="form.sets" type="number" class="w-full border-b-2 border-slate-200 bg-transparent p-1 font-bold outline-none focus:border-indigo-500"></div>
-                    <div><label class="text-[10px] font-bold text-slate-400">休憩(秒)</label><input v-model="form.rest" type="number" class="w-full border-b-2 border-slate-200 bg-transparent p-1 font-bold outline-none focus:border-indigo-500"></div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">本数 (sets)</label>
+                        <input v-model="form.sets" type="number" placeholder="1" class="w-full border-b-2 border-slate-200 bg-transparent p-1 font-bold outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">休憩 (秒)</label>
+                        <input v-model="form.rest" type="number" placeholder="60" class="w-full border-b-2 border-slate-200 bg-transparent p-1 font-bold outline-none focus:border-indigo-500">
+                    </div>
                 </div>
 
-                <textarea v-model="form.note" rows="2" class="w-full border-2 border-slate-200 rounded-xl p-3 outline-none focus:border-indigo-500 text-xs font-medium" placeholder="メモ..."></textarea>
-                <button @click="saveRun" :disabled="loading" class="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-lg active:scale-95 transition-all text-xl">
+                <!-- メモ -->
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">メモ</label>
+                    <textarea v-model="form.note" rows="2" class="w-full border-2 border-slate-200 rounded-lg bg-white p-2 outline-none focus:border-indigo-500 text-xs mt-1 font-medium shadow-sm" placeholder="感想など..."></textarea>
+                </div>
+
+                <button @click="saveRun" :disabled="loading" class="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-lg hover:bg-indigo-700 active:scale-95 transition-all disabled:bg-slate-300 mt-2 tracking-tighter text-xl">
                     {{ loading ? '送信中...' : '記録！！' }}
                 </button>
             </div>
 
-            <!-- カレンダービュー -->
-            <div v-if="view === 'calendar'" class="space-y-4">
-                <!-- 月切り替え -->
-                <div class="flex justify-between items-center px-2">
-                    <button @click="prevMonth" class="p-2 font-bold text-indigo-600">←</button>
-                    <div class="text-center">
-                        <div class="text-xl font-black italic">{{ currentYear }} / {{ currentMonth + 1 }}</div>
-                        <div class="text-[10px] font-bold text-slate-400">月間走行距離: {{ monthlyTotal }} km</div>
-                    </div>
-                    <button @click="nextMonth" class="p-2 font-bold text-indigo-600">→</button>
-                </div>
+            <!-- 検索 -->
+            <div class="mb-6 relative">
+                <input v-model="searchQuery" type="text" placeholder="キーワードで履歴を検索..." class="w-full bg-slate-100 rounded-xl py-3 px-4 pl-10 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-300 transition-all shadow-inner">
+                <span class="absolute left-3 top-3 opacity-30 text-sm">🔍</span>
+            </div>
 
-                <!-- カレンダー本体 -->
-                <div class="grid grid-cols-7 text-center text-[10px] font-black text-slate-300 mb-1">
-                    <div v-for="d in ['SUN','MON','TUE','WED','THU','FRI','SAT']">{{d}}</div>
-                </div>
-                <div class="grid grid-cols-7 gap-1">
-                    <div v-for="blank in firstDayOfMonth" class="h-12"></div>
-                    <div v-for="day in daysInMonth" :key="day" 
-                         @click="selectDay(day)"
-                         :class="isSelected(day) ? 'bg-indigo-600 text-white rounded-xl shadow-md' : 'text-slate-700'"
-                         class="h-12 flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-slate-100 rounded-xl relative">
-                        <span class="font-bold text-xs">{{ day }}</span>
-                        <div v-if="hasData(day)" class="dot mt-1" :class="isSelected(day) ? 'bg-white' : ''"></div>
+            <!-- 履歴リスト -->
+            <div class="space-y-4 max-h-[400px] overflow-y-auto pr-1">
+                <div v-for="run in filteredRuns" :key="run.id" class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:border-indigo-200 transition-all">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-[9px] font-black bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded uppercase tracking-tighter">{{ run.mode }}</span>
+                        <span class="text-[10px] text-slate-300 font-mono font-bold">{{ formatDate(run.created_at) }}</span>
                     </div>
-                </div>
-
-                <!-- 選択日の詳細表示 -->
-                <div v-if="selectedDateRecords.length" class="mt-6 space-y-3 animate-fade-in">
-                    <h3 class="text-xs font-black text-slate-400 uppercase border-b border-slate-100 pb-1">{{ currentMonth+1 }}月{{ selectedDay }}日の記録</h3>
-                    <div v-for="run in selectedDateRecords" :key="run.id" class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                        <div class="flex justify-between items-start mb-1">
-                            <span class="text-[9px] font-black bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded uppercase">{{ run.mode }}</span>
-                        </div>
-                        <div class="text-2xl font-black text-slate-800 tracking-tighter">{{ run.distance }} <span class="text-xs font-normal text-slate-400 uppercase">km</span></div>
-                        <div class="text-[10px] text-slate-500 mt-1 font-bold uppercase flex flex-wrap gap-2">
-                            <span v-if="run.duration">⏱ {{ formatTime(run.duration) }}</span>
-                            <span v-if="run.pace && !['TT', 'レストトレーニング'].includes(run.mode)">📈 {{ formatTime(run.pace) }}/km</span>
-                        </div>
-                        <div v-if="run.note" class="mt-2 text-[11px] text-slate-600 italic bg-white p-2 rounded-lg border-l-2 border-indigo-400">"{{ run.note }}"</div>
+                    <div class="text-3xl font-black text-slate-800 tracking-tighter">{{ run.distance }} <span class="text-xs font-normal text-slate-400 uppercase font-bold">km</span></div>
+                    <div class="text-[10px] text-slate-500 mt-1 flex flex-wrap gap-x-4 gap-y-1 font-black uppercase">
+                        <span v-if="run.duration" class="flex items-center gap-1 text-slate-700 font-bold italic underline decoration-indigo-200 decoration-2 italic text-[11px]">⏱ {{ formatTimeDisplay(run.duration) }}</span>
+                        <span v-if="run.pace && !['TT', 'レストトレーニング'].includes(run.mode)" class="text-indigo-500 italic decoration-indigo-200 decoration-2 italic text-[11px]">📈 {{ formatTimeDisplay(run.pace) }}/km</span>
+                        <span v-if="run.sets" class="text-emerald-500">⚡ {{ run.sets }}本</span>
+                        <span v-if="run.rest" class="text-amber-500 font-mono">🧘 {{ run.rest }}s rest</span>
                     </div>
-                </div>
-                <div v-else class="text-center py-10 text-slate-300 text-[10px] font-bold uppercase tracking-widest">
-                    日付をタップすると詳細が見れます
+                    <div v-if="run.note" class="mt-3 text-[11px] text-slate-600 bg-slate-50 p-3 rounded-xl border-l-4 border-indigo-400 break-words font-medium leading-relaxed shadow-sm">
+                        {{ run.note }}
+                    </div>
                 </div>
             </div>
         </div>
@@ -132,102 +139,96 @@
 
         createApp({
             setup() {
-                const view = ref('calendar');
                 const modes = ['ジョグ', 'インターバル', 'ペース走', 'TT', 'ビルドアップ', 'レストトレーニング'];
                 const runs = ref([]);
                 const loading = ref(false);
+                const searchQuery = ref('');
                 const form = ref({ mode: 'ジョグ', distance: '', unit: 'km', dur_m: '', dur_s: '', pace_m: '', pace_s: '', sets: '', rest: '', note: '' });
 
-                // カレンダー管理
-                const now = new Date();
-                const currentYear = ref(now.getFullYear());
-                const currentMonth = ref(now.getMonth());
-                const selectedDay = ref(now.getDate());
+                const getSec = (m, s) => (parseInt(m || 0) * 60) + parseInt(s || 0);
+                const setFromSec = (total) => {
+                    if (!total || total <= 0 || !isFinite(total)) return { m: '', s: '' };
+                    return { m: Math.floor(total / 60), s: Math.round(total % 60).toString().padStart(2, '0') };
+                };
 
-                const daysInMonth = computed(() => new Date(currentYear.value, currentMonth.value + 1, 0).getDate());
-                const firstDayOfMonth = computed(() => new Date(currentYear.value, currentMonth.value, 1).getDay());
+                const formatTimeDisplay = (str) => {
+                    if(!str || !str.includes(':')) return str;
+                    const [m, s] = str.split(':');
+                    return `${m}分${s.padStart(2, '0')}秒`;
+                };
+
+                const autoCalc = () => {
+                    if (['TT', 'レストトレーニング'].includes(form.value.mode)) return;
+                    
+                    const distRaw = parseFloat(form.value.distance);
+                    const distKm = form.value.unit === 'm' ? distRaw / 1000 : distRaw; // mなら1000で割って計算
+                    
+                    const dur = getSec(form.value.dur_m, form.value.dur_s);
+                    const pace = getSec(form.value.pace_m, form.value.pace_s);
+
+                    if (form.value.mode === 'ジョグ' && distKm && dur) {
+                        const res = setFromSec(dur / distKm);
+                        form.value.pace_m = res.m; form.value.pace_s = res.s;
+                    } else if (form.value.mode === 'ペース走') {
+                        if (distKm && dur && (!form.value.pace_m && !form.value.pace_s)) {
+                            const res = setFromSec(dur / distKm); form.value.pace_m = res.m; form.value.pace_s = res.s;
+                        } else if (distKm && pace && (!form.value.dur_m && !form.value.dur_s)) {
+                            const res = setFromSec(distKm * pace); form.value.dur_m = res.m; form.value.dur_s = res.s;
+                        } else if (dur && pace && !form.value.distance) {
+                            const calculatedDistKm = (dur / pace);
+                            form.value.distance = form.value.unit === 'm' ? (calculatedDistKm * 1000).toFixed(0) : calculatedDistKm.toFixed(2);
+                        }
+                    }
+                };
+
+                const changeMode = (m) => {
+                    const currentUnit = form.value.unit;
+                    form.value.mode = m;
+                    Object.keys(form.value).forEach(k => { if(k !== 'mode' && k !== 'unit') form.value[k] = '' });
+                };
 
                 const fetchRuns = async () => {
                     const { data } = await _supabase.from('runs').select('*').order('created_at', { ascending: false });
                     if (data) runs.value = data;
                 };
 
-                const hasData = (day) => {
-                    return runs.value.some(r => {
-                        const d = new Date(r.created_at);
-                        return d.getFullYear() === currentYear.value && d.getMonth() === currentMonth.value && d.getDate() === day;
-                    });
-                };
-
-                const isSelected = (day) => selectedDay.value === day;
-                const selectDay = (day) => selectedDay.value = day;
-
-                const selectedDateRecords = computed(() => {
-                    return runs.value.filter(r => {
-                        const d = new Date(r.created_at);
-                        return d.getFullYear() === currentYear.value && d.getMonth() === currentMonth.value && d.getDate() === selectedDay.value;
-                    });
+                const filteredRuns = computed(() => {
+                    const q = searchQuery.value.toLowerCase();
+                    return runs.value.filter(r => r.mode.toLowerCase().includes(q) || (r.note && r.note.toLowerCase().includes(q)) || r.distance.toString().includes(q));
                 });
-
-                const monthlyTotal = computed(() => {
-                    const total = runs.value.reduce((acc, r) => {
-                        const d = new Date(r.created_at);
-                        if (d.getFullYear() === currentYear.value && d.getMonth() === currentMonth.value) return acc + r.distance;
-                        return acc;
-                    }, 0);
-                    return total.toFixed(2);
-                });
-
-                const prevMonth = () => { if (currentMonth.value === 0) { currentYear.value--; currentMonth.value = 11; } else { currentMonth.value--; } };
-                const nextMonth = () => { if (currentMonth.value === 11) { currentYear.value++; currentMonth.value = 0; } else { currentMonth.value++; } };
-
-                // 計算ロジック
-                const getSec = (m, s) => (parseInt(m || 0) * 60) + parseInt(s || 0);
-                const setFromSec = (total) => {
-                    if (!total || total <= 0 || !isFinite(total)) return { m: '', s: '' };
-                    return { m: Math.floor(total / 60), s: Math.round(total % 60).toString().padStart(2, '0') };
-                };
-                const autoCalc = () => {
-                    const distKm = form.value.unit === 'm' ? parseFloat(form.value.distance) / 1000 : parseFloat(form.value.distance);
-                    const dur = getSec(form.value.dur_m, form.value.dur_s);
-                    const pace = getSec(form.value.pace_m, form.value.pace_s);
-                    if (form.value.mode === 'ジョグ' && distKm && dur) { const res = setFromSec(dur / distKm); form.value.pace_m = res.m; form.value.pace_s = res.s; }
-                    else if (form.value.mode === 'ペース走') {
-                        if (distKm && dur && !form.value.pace_m) { const res = setFromSec(dur / distKm); form.value.pace_m = res.m; form.value.pace_s = res.s; }
-                        else if (distKm && pace && !form.value.dur_m) { const res = setFromSec(distKm * pace); form.value.dur_m = res.m; form.value.dur_s = res.s; }
-                    }
-                };
 
                 const saveRun = async () => {
+                    if (!form.value.distance && form.value.mode !== 'レストトレーニング') return alert('距離を入れてね！');
                     loading.value = true;
-                    const distKm = form.value.unit === 'm' ? parseFloat(form.value.distance) / 1000 : parseFloat(form.value.distance);
-                    const dur = (form.value.dur_m || form.value.dur_s) ? `${form.value.dur_m || 0}:${(form.value.dur_s || 0).toString().padStart(2,'0')}` : null;
-                    const pace = (form.value.pace_m || form.value.pace_s) ? `${form.value.pace_m || 0}:${(form.value.pace_s || 0).toString().padStart(2,'0')}` : null;
+                    
+                    const distRaw = parseFloat(form.value.distance) || 0;
+                    const finalDistKm = form.value.unit === 'm' ? distRaw / 1000 : distRaw;
+
+                    const durationStr = (form.value.dur_m || form.value.dur_s) ? `${form.value.dur_m || 0}:${(form.value.dur_s || 0).toString().padStart(2,'0')}` : null;
+                    const paceStr = (form.value.pace_m || form.value.pace_s) ? `${form.value.pace_m || 0}:${(form.value.pace_s || 0).toString().padStart(2,'0')}` : null;
 
                     const { error } = await _supabase.from('runs').insert([{
-                        mode: form.value.mode, distance: distKm || 0, duration: dur,
-                        sets: form.value.sets || null, rest: form.value.rest?.toString() || null,
-                        pace: pace, note: form.value.note
+                        mode: form.value.mode,
+                        distance: finalDistKm,
+                        duration: durationStr,
+                        sets: form.value.sets ? parseInt(form.value.sets) : null,
+                        rest: form.value.rest ? form.value.rest.toString() : null,
+                        pace: paceStr,
+                        note: form.value.note
                     }]);
-                    if (!error) { 
-                        await fetchRuns(); 
-                        view.value = 'calendar';
-                        Object.keys(form.value).forEach(k => { if(k!=='mode'&&k!=='unit') form.value[k]='' });
-                    }
+
+                    if (!error) { await fetchRuns(); changeMode(form.value.mode); }
+                    else { alert('エラー: ' + error.message); }
                     loading.value = false;
                 };
 
-                const formatTime = (s) => {
-                    const [m, sec] = s.split(':');
-                    return `${m}分${sec.padStart(2, '0')}秒`;
-                };
                 const formatDate = (s) => {
                     const d = new Date(s);
-                    return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2,'0')}`;
+                    return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
                 };
 
                 onMounted(fetchRuns);
-                return { view, modes, form, runs, loading, currentYear, currentMonth, selectedDay, daysInMonth, firstDayOfMonth, hasData, isSelected, selectDay, selectedDateRecords, monthlyTotal, prevMonth, nextMonth, saveRun, formatTime, formatDate, autoCalc, changeMode: (m) => form.value.mode = m };
+                return { modes, form, runs, searchQuery, filteredRuns, loading, saveRun, formatDate, autoCalc, changeMode, formatTimeDisplay };
             }
         }).mount('#app');
     </script>
