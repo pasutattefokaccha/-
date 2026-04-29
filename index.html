@@ -3,79 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Running Logger Pro</title>
+    <title>Running Log Pro</title>
+    <!-- デザイン(Tailwind CSS), 動く仕組み(Vue.js), データベース(Supabase) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-slate-50 p-4">
-    <div id="app" class="max-w-md mx-auto bg-white p-6 rounded-2xl shadow-xl border border-slate-200">
-        <h1 class="text-2xl font-black text-center mb-6 text-slate-800">🏃‍♂️ RUNNING LOG</h1>
-
-        <!-- モード選択 -->
-        <div class="mb-6">
-            <label class="block text-sm font-bold text-slate-700 mb-2">トレーニングモード</label>
-            <select v-model="form.mode" class="w-full border-2 border-slate-200 p-3 rounded-lg bg-white focus:border-blue-500 outline-none transition-all">
-                <option value="ジョグ">🏃 ジョグ</option>
-                <option value="インターバル">⚡ インターバル</option>
-                <option value="ペース走">⏱ ペース走</option>
-                <option value="TT">🏁 TT (タイムトライアル)</option>
-                <option value="ビルドアップ">📈 ビルドアップ</option>
-                <option value="レスト">🧘 レストトレーニング</option>
-            </select>
+<body class="bg-slate-50 min-h-screen p-4 font-sans text-slate-900">
+    <div id="app" class="max-w-md mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
+        <!-- ヘッダー -->
+        <div class="bg-gradient-to-br from-indigo-600 to-blue-500 p-6 text-white text-center">
+            <h1 class="text-2xl font-black italic tracking-widest">RUNNING LOG</h1>
+            <p class="text-[10px] uppercase opacity-70 mt-1 tracking-tighter">Powered by Supabase & GitHub</p>
         </div>
 
-        <!-- 入力フォーム (モードによって表示が変わる) -->
-        <div class="space-y-4 bg-slate-50 p-4 rounded-xl mb-6">
-            
-            <!-- 距離 (全モード共通) -->
-            <div>
-                <label class="text-xs font-bold text-slate-500 uppercase">距離 (km)</label>
-                <input v-model="form.distance" type="number" step="0.1" class="w-full border-b-2 border-slate-300 bg-transparent p-1 focus:border-blue-500 outline-none">
-            </div>
-
-            <!-- インターバル専用 -->
-            <div v-if="form.mode === 'インターバル'" class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="text-xs font-bold text-slate-500 uppercase">セット数</label>
-                    <input v-model="form.sets" type="number" placeholder="5" class="w-full border-b-2 border-slate-300 bg-transparent p-1 outline-none">
-                </div>
-                <div>
-                    <label class="text-xs font-bold text-slate-500 uppercase">レスト(秒/分)</label>
-                    <input v-model="form.rest_time" type="text" placeholder="60s" class="w-full border-b-2 border-slate-300 bg-transparent p-1 outline-none">
+        <div class="p-6">
+            <!-- モード選択 -->
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest">Training Mode</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button v-for="m in modes" :key="m" @click="form.mode = m"
+                        :class="form.mode === m ? 'bg-indigo-600 text-white shadow-md scale-105' : 'bg-slate-100 text-slate-500'"
+                        class="text-[10px] py-2.5 rounded-xl font-black transition-all duration-200">
+                        {{ m }}
+                    </button>
                 </div>
             </div>
 
-            <!-- タイム/時間 (ジョグ、TT、ペース走、ビルドアップ用) -->
-            <div v-if="['ジョグ', 'TT', 'ペース走', 'ビルドアップ'].includes(form.mode)">
-                <label class="text-xs font-bold text-slate-500 uppercase">タイム / 合計時間</label>
-                <input v-model="form.duration" type="text" placeholder="00:45:00" class="w-full border-b-2 border-slate-300 bg-transparent p-1 outline-none">
-            </div>
+            <!-- 入力フォーム -->
+            <div class="space-y-5 bg-slate-50 p-5 rounded-2xl border border-slate-100 mb-8 shadow-inner">
+                <h2 class="text-center font-black text-indigo-600 text-sm italic">ENTRY: {{ form.mode }}</h2>
+                
+                <!-- 距離 (全モード共通) -->
+                <div class="relative">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">距離 (km)</label>
+                    <input v-model="form.distance" type="number" step="0.1" placeholder="0.0" class="w-full border-b-2 border-slate-200 bg-transparent p-2 text-2xl font-black outline-none focus:border-indigo-500 transition-all">
+                </div>
 
-            <!-- ペース (ペース走、ビルドアップ用) -->
-            <div v-if="['ペース走', 'ビルドアップ'].includes(form.mode)">
-                <label class="text-xs font-bold text-slate-500 uppercase">設定ペース (分/km)</label>
-                <input v-model="form.pace" type="text" placeholder="4:30" class="w-full border-b-2 border-slate-300 bg-transparent p-1 outline-none">
-            </div>
+                <!-- タイム (レスト以外) -->
+                <div v-if="form.mode !== 'レストトレーニング'">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">タイム / 合計時間</label>
+                    <input v-model="form.duration" type="text" placeholder="例: 25:40" class="w-full border-b-2 border-slate-200 bg-transparent p-2 font-bold outline-none focus:border-indigo-500 transition-all">
+                </div>
 
-            <button @click="saveRun" :disabled="loading" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg shadow-lg hover:bg-blue-700 active:scale-95 transition-all disabled:bg-slate-400">
-                {{ loading ? '送信中...' : '記録を保存する' }}
-            </button>
-        </div>
-
-        <!-- 記録一覧 -->
-        <h2 class="font-bold text-slate-700 mb-4 border-l-4 border-blue-500 pl-2">最近の記録</h2>
-        <div class="space-y-3">
-            <div v-for="run in runs" :key="run.id" class="bg-white border border-slate-100 p-3 rounded-lg shadow-sm flex justify-between items-center">
-                <div>
-                    <span class="text-[10px] font-bold bg-slate-200 px-2 py-0.5 rounded text-slate-600">{{ run.mode }}</span>
-                    <div class="font-black text-slate-800 text-lg">{{ run.distance }} <span class="text-sm font-normal text-slate-500">km</span></div>
-                    <div class="text-xs text-slate-500">
-                        <span v-if="run.duration">⏱ {{ run.duration }}</span>
-                        <span v-if="run.sets"> | {{ run.sets }}セット</span>
+                <!-- インターバル専用 -->
+                <div v-if="form.mode === 'インターバル'" class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">本数 (sets)</label>
+                        <input v-model="form.sets" type="number" placeholder="5" class="w-full border-b-2 border-slate-200 bg-transparent p-2 font-bold outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">レスト (rest)</label>
+                        <input v-model="form.rest" type="text" placeholder="60s" class="w-full border-b-2 border-slate-200 bg-transparent p-2 font-bold outline-none focus:border-indigo-500">
                     </div>
                 </div>
-                <div class="text-[10px] text-slate-400 font-mono">{{ formatDate(run.created_at) }}</div>
+
+                <!-- ペース・ビルドアップ用 -->
+                <div v-if="['ペース走', 'ビルドアップ'].includes(form.mode)">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">設定ペース (/km)</label>
+                    <input v-model="form.pace" type="text" placeholder="4:30" class="w-full border-b-2 border-slate-200 bg-transparent p-2 font-bold outline-none focus:border-indigo-500">
+                </div>
+
+                <button @click="saveRun" :disabled="loading" class="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-lg hover:bg-indigo-700 active:scale-95 transition-all disabled:bg-slate-300 mt-2">
+                    {{ loading ? 'SENDING...' : 'RECORD RUN' }}
+                </button>
+            </div>
+
+            <!-- 履歴リスト -->
+            <h3 class="font-black text-slate-800 text-sm mb-4 flex items-center gap-2 uppercase tracking-tighter">
+                <span class="w-2 h-2 bg-indigo-500 rounded-full"></span> Recent Activity
+            </h3>
+            <div class="space-y-3">
+                <div v-for="run in runs" :key="run.id" class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm flex justify-between items-center hover:border-indigo-200 transition-colors">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-[9px] font-black bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded uppercase tracking-tighter">{{ run.mode }}</span>
+                            <span class="text-[10px] text-slate-300 font-mono">{{ formatDate(run.created_at) }}</span>
+                        </div>
+                        <div class="text-2xl font-black text-slate-800 tracking-tighter">{{ run.distance }} <span class="text-xs font-normal text-slate-400">km</span></div>
+                        <div class="text-[10px] text-slate-500 mt-0.5 flex flex-wrap gap-x-3 gap-y-1">
+                            <span v-if="run.duration">⏱ {{ run.duration }}</span>
+                            <span v-if="run.sets">⚡ {{ run.sets }}sets ({{ run.rest }})</span>
+                            <span v-if="run.pace">📈 {{ run.pace }}/km</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -83,32 +95,25 @@
     <script>
         const { createApp, ref, onMounted } = Vue;
 
-        // --- 設定：ここにSupabaseの情報を入れてください ---
-        const SUPABASE_URL = 'あなたのURL';
-        const SUPABASE_KEY = 'あなたのAPIキー';
+        // あなたのプロジェクト情報を自動セットしました
+        const SUPABASE_URL = 'https://gzbczdezunhooqsfuipk.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_HxQHVDlq0fgVjiOB4yeKOg_OJEYBhU_';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         createApp({
             setup() {
+                const modes = ['ジョグ', 'インターバル', 'ペース走', 'TT', 'ビルドアップ', 'レストトレーニング'];
                 const runs = ref([]);
                 const loading = ref(false);
-                const form = ref({
-                    mode: 'ジョグ',
-                    distance: '',
-                    duration: '',
-                    sets: '',
-                    rest_time: '',
-                    pace: ''
-                });
+                const form = ref({ mode: 'ジョグ', distance: '', duration: '', sets: '', rest: '', pace: '' });
 
                 const fetchRuns = async () => {
                     const { data, error } = await _supabase.from('runs').select('*').order('created_at', { ascending: false });
-                    if (error) console.error(error);
-                    else runs.value = data;
+                    if (!error) runs.value = data;
                 };
 
                 const saveRun = async () => {
-                    if (!form.value.distance) return alert('距離を入力してください');
+                    if (!form.value.distance) return alert('距離を入力してください！');
                     loading.value = true;
                     
                     const { error } = await _supabase.from('runs').insert([{
@@ -116,32 +121,28 @@
                         distance: parseFloat(form.value.distance),
                         duration: form.value.duration,
                         sets: form.value.sets ? parseInt(form.value.sets) : null,
-                        rest_time: form.value.rest_time,
+                        rest: form.value.rest,
                         pace: form.value.pace
                     }]);
 
                     if (error) {
-                        alert('エラー発生: ' + error.message);
+                        alert('エラー: ' + error.message);
                     } else {
-                        // フォームをリセット
-                        form.value.distance = '';
-                        form.value.duration = '';
-                        form.value.sets = '';
-                        form.value.rest_time = '';
-                        form.value.pace = '';
+                        // 成功したらリセット
+                        const currentMode = form.value.mode;
+                        form.value = { mode: currentMode, distance: '', duration: '', sets: '', rest: '', pace: '' };
                         await fetchRuns();
                     }
                     loading.value = false;
                 };
 
-                const formatDate = (dateStr) => {
-                    const d = new Date(dateStr);
+                const formatDate = (s) => {
+                    const d = new Date(s);
                     return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
                 };
 
                 onMounted(fetchRuns);
-
-                return { form, runs, loading, saveRun, formatDate };
+                return { modes, form, runs, loading, saveRun, formatDate };
             }
         }).mount('#app');
     </script>
